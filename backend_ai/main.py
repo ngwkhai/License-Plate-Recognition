@@ -1,112 +1,96 @@
 # === KHỐI 1: Thư viện & cấu hình ===
 import cv2
-import time
+import torch
 import base64
 import json
-import requests
+from fastapi import FastAPI, File, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+import numpy as np
 from datetime import datetime
-from ultralytics import YOLO
-import easyocr
-import os
-from dotenv import load_dotenv
 
-load_dotenv()
+MODEL_PATH_DETECTOR = "model/LP_detector.pt"
+MODEL_PATH_OCR = "model/LP_ocr.pt"
+CONF_THRESHOLD = 0.6
 
-MODEL_PATH = os.getenv("MODEL_PATH", "yolov8n.pt")
-stream_source = os.getenv("CAMERA_STREAM", "0")
-CAMERA_STREAM = int(stream_source) if stream_source.isdigit() else stream_source
-KAFKA_BROKER = os.getenv("KAFKA_BROKER", "localhost:9092")
-KAFKA_TOPIC = os.getenv("KAFKA_TOPIC", "plates_detected")
-REST_API_URL = os.getenv("REST_API_URL", "http://backend_db:5000/api/plates")
-CAMERA_ID = os.getenv("CAMERA_ID", "CAM01")
-CONF_THRESHOLD = float(os.getenv("CONF_THRESHOLD", "0.5"))
+detector = torch.hub.load('ultralytics/yolov5', 'custom', path=MODEL_PATH_DETECTOR, force_reload=True)
+ocr_model = torch.hub.load('ultralytics/yolov5', 'custom', path=MODEL_PATH_OCR, force_reload=True)
 
-model = YOLO(MODEL_PATH)
-ocr = easyocr.Reader(['en'])
+app = FastAPI()
+clients = set()
 
-# === KHỐI 2: Kết nối Kafka (có retry) ===
-use_kafka = False
-producer = None
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-try:
-    from kafka import KafkaProducer
-    for i in range(10):
-        try:
-            producer = KafkaProducer(
-                bootstrap_servers=KAFKA_BROKER,
-                value_serializer=lambda m: json.dumps(m).encode('utf-8')
-            )
-            use_kafka = True
-            print(f"[Kafka] Connected to {KAFKA_BROKER}")
-            break
-        except Exception as e:
-            print(f"[Kafka] Attempt {i+1}/5 failed: {e}")
-            time.sleep(3)
-    if not use_kafka:
-        print("[Kafka] All retries failed. Will use REST fallback.")
-except Exception as e:
-    print(f"[Kafka Import Error] {e}")
-    use_kafka = False
-
-# === KHỐI 3: Hàm gửi dữ liệu ===
-def send_result(plate, image, timestamp):
-    _, buffer = cv2.imencode('.jpg', image)
-    img_base64 = base64.b64encode(buffer).decode('utf-8')
-    payload = {
-        "plate": plate,
-        "time": timestamp,
-        "camera_id": CAMERA_ID,
-        "image_base64": img_base64
-    }
-
-    if use_kafka and producer:
-        try:
-            producer.send(KAFKA_TOPIC, value=payload)
-            print(f"[Kafka] Sent: {plate}")
-            return
-        except Exception as e:
-            print(f"[Kafka Error] {e}. Using REST fallback.")
-
-    try:
-        r = requests.post(REST_API_URL, json=payload)
-        print(f"[REST] Sent: {plate} (status {r.status_code})")
-    except Exception as e:
-        print(f"[REST Error] {e}")
-
-# === KHỐI 4: Hàm chính xử lý video/cam/ảnh ===
-def main():
-    cap = cv2.VideoCapture(CAMERA_STREAM)
-    if not cap.isOpened():
-        print(f"[ERROR] Cannot open stream: {CAMERA_STREAM}")
-        return
-
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            time.sleep(0.1)
+# === KHỐI 2: Tiện ích xử lý ảnh và đẩy kết quả ===
+def recognize_plate_chars(cropped_img):
+    results = ocr_model(cropped_img)
+    chars = []
+    for *xyxy, conf, cls in results.xyxy[0]:
+        if conf < CONF_THRESHOLD:
             continue
+        x1, _, x2, _ = map(int, xyxy)
+        char = ocr_model.names[int(cls)]
+        chars.append((x1, char))
+    chars.sort(key=lambda x: x[0])
+    return ''.join([c for _, c in chars])
 
-        results = model(frame)
-        for result in results:
-            for box in result.boxes:
-                if box.conf < CONF_THRESHOLD:
-                    continue
-                x1, y1, x2, y2 = map(int, box.xyxy[0])
-                cropped = frame[y1:y2, x1:x2]
-                texts = ocr.readtext(cropped, detail=0)
-                text = ''.join(texts).replace(" ", "")
-                if text:
-                    timestamp = datetime.utcnow().isoformat()
-                    send_result(text, cropped, timestamp)
+async def process_and_emit(image_np):
+    results = detector(image_np)
+    for *xyxy, conf, cls in results.xyxy[0]:
+        if conf < CONF_THRESHOLD:
+            continue
+        x1, y1, x2, y2 = map(int, xyxy)
+        cropped = image_np[y1:y2, x1:x2]
+        plate_text = recognize_plate_chars(cropped)
+        if plate_text:
+            _, buffer = cv2.imencode('.jpg', cropped)
+            img_base64 = base64.b64encode(buffer).decode('utf-8')
+            payload = {
+                "plate": plate_text,
+                "time": datetime.utcnow().isoformat(),
+                "image_base64": img_base64
+            }
+            await broadcast(payload)
 
-        cv2.imshow("License Plate Detection", frame)
-        key = cv2.waitKey(1)
-        if key == 27 or key == ord('q'):
-            break
+async def broadcast(data: dict):
+    message = json.dumps(data)
+    to_remove = set()
+    for client in clients:
+        try:
+            await client.send_text(message)
+        except:
+            to_remove.add(client)
+    clients.difference_update(to_remove)
 
-    cap.release()
-    cv2.destroyAllWindows()
+# === KHỐI 3: Endpoint REST ===
+@app.post("/upload")
+async def upload_image(file: UploadFile = File(...)):
+    contents = await file.read()
+    nparr = np.frombuffer(contents, np.uint8)
+    image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    await process_and_emit(image)
+    return JSONResponse({"status": "processing"})
 
-# === KHỐI 5: Khởi động ===
-if __name__ == "__main__":
-    main()
+@app.post("/stream_frame")
+async def stream_frame(file: UploadFile = File(...)):
+    contents = await file.read()
+    nparr = np.frombuffer(contents, np.uint8)
+    image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    await process_and_emit(image)
+    return JSONResponse({"status": "frame processed"})
+
+# === KHỐI 4: WebSocket Server ===
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    clients.add(websocket)
+    try:
+        while True:
+            await websocket.receive_text()  
+    except WebSocketDisconnect:
+        clients.remove(websocket)

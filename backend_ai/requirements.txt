@@ -4,3 +4,7 @@ easyocr
 kafka-python
 requests
 python-dotenv
+fastapi
+uvicorn
+torch
+python-multipart
