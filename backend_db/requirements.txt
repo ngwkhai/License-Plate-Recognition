@@ -1,0 +1,12 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+pymysql               # nếu dùng MySQL
+# psycopg2-binary     # nếu dùng PostgreSQL thay vì MySQL
+python-multipart
+python-dotenv
+passlib[bcrypt]
+aiofiles
+websockets
+python-jose[cryptography]
+pydantic
