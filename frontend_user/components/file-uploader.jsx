@@ -107,10 +107,10 @@ export function FileUploader() {
 
       // Simulate API call
       // In a real application, you would use FormData to send files to your backend
-      // const formData = new FormData();
-      // files.forEach(file => formData.append('files', file));
-      // const response = await fetch('your-api-endpoint', { method: 'POST', body: formData });
-      // const data = await response.json();
+      const formData = new FormData();
+      files.forEach(file => formData.append('files', file));
+      const response = await fetch('http://localhost:8000/detect', { method: 'POST', body: formData });
+      const data = await response.json();
 
       // Simulate API response after 2 seconds
       await new Promise((resolve) => setTimeout(resolve, 2000))

@@ -1,23 +1,19 @@
-# Sử dụng Node.js image làm base image
-FROM node:16
+# 1. Base image
+FROM node:18-alpine
 
-# Đặt thư mục làm việc cho ứng dụng
-WORKDIR /usr/src/app
+# 2. Set working directory
+WORKDIR /app
 
-# Copy package.json và package-lock.json vào container
-COPY package*.json ./
-
-# Cài đặt các dependencies từ package.json
+# 3. Copy package files and install dependencies
+COPY package.json package-lock.json* ./
 RUN npm install
 
-# Copy toàn bộ mã nguồn vào container
+# 4. Copy toàn bộ mã nguồn
 COPY . .
 
-# Build ứng dụng React
+# 5. Build ứng dụng
 RUN npm run build
 
-# Chạy ứng dụng trên port 3000
+# 6. Expose port và run app
 EXPOSE 3000
-
-# Lệnh khởi động ứng dụng
 CMD ["npm", "start"]
