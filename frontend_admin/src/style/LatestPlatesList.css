@@ -17,7 +17,7 @@
   border-radius: 8px;
   box-shadow: 0 2px 5px rgba(0,0,0,0.1);
   user-select: none;
-  background-color: white;
+  background-color: burlywood;
 }
 
 .flip-card-inner {
@@ -58,7 +58,7 @@
 }
 
 .flip-card-back {
-  background-color: #ef6c00;
-  color: white;
+  background-color: burlywood;
+  color: black;
   transform: rotateY(180deg);
 }

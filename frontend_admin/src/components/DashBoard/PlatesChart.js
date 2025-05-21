@@ -25,153 +25,101 @@ ChartJS.register(
 
 export default function PlatesChart() {
   const now = new Date();
-
-  // Filter lựa chọn ngày tháng năm
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(null);
   const [selectedDay, setSelectedDay] = useState(null);
-
-  // State xác định cấp độ thời gian (hour, day, month)
   const [timeUnit, setTimeUnit] = useState('month');
-
-  // Dữ liệu thô (mảng { timestamp, count })
   const [rawData, setRawData] = useState([]);
+  const [filteredData, setFilteredData] = useState([]);
+  const [animatedData, setAnimatedData] = useState([]);
 
-  // Các năm để chọn
-  const yearOptions = [];
-  for (let y = now.getFullYear(); y >= now.getFullYear() - 5; y--) {
-    yearOptions.push(y);
-  }
+  const whiteBackgroundPlugin = {
+    id: 'whiteBackground',
+    beforeDraw: (chart) => {
+      const { ctx, width, height } = chart;
+      ctx.save();
+      ctx.globalCompositeOperation = 'destination-over';
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, width, height);
+      ctx.restore();
+    },
+  };
 
-  // Cập nhật timeUnit khi filter thay đổi
   useEffect(() => {
-    if (selectedYear && selectedMonth && selectedDay) {
-      setTimeUnit('hour');
-    } else if (selectedYear && selectedMonth && !selectedDay) {
-      setTimeUnit('day');
-    } else if (selectedYear && !selectedMonth && !selectedDay) {
-      setTimeUnit('month');
-    }
+    if (selectedYear && selectedMonth && selectedDay) setTimeUnit('hour');
+    else if (selectedYear && selectedMonth) setTimeUnit('day');
+    else setTimeUnit('month');
   }, [selectedYear, selectedMonth, selectedDay]);
 
-  // Fetch dữ liệu từ API khi mount
   useEffect(() => {
-    let isMounted = true;
-
-    const fetchData = async () => {
-      try {
-        const stats = await mockGetStats();
-        if (isMounted && stats.plateCounts) {
-          setRawData(stats.plateCounts);
-        }
-      } catch (error) {
-        console.error('Lỗi khi lấy dữ liệu biểu đồ:', error);
-      }
-    };
-
-    fetchData();
-
-    return () => {
-      isMounted = false;
-    };
+    let mounted = true;
+    mockGetStats().then((stats) => {
+      if (mounted && stats.plateCounts) setRawData(stats.plateCounts);
+    });
+    return () => (mounted = false);
   }, []);
 
-  // Cập nhật dữ liệu realtime qua subscribePlates
   useEffect(() => {
-    // Hàm callback khi có plate mới
-    const handleNewPlate = (newPlate) => {
-      // newPlate chỉ có id, plateNumber, timestamp
-      // Nhưng biểu đồ dựa vào plateCounts: [{ timestamp, count }], 
-      // do đó ta cần cập nhật rawData phù hợp (tạm giản là fetch lại toàn bộ stats)
-      // hoặc giả lập tăng count giờ hiện tại
-
-      // Cách đơn giản: fetch lại toàn bộ dữ liệu stats mới
+    const unsubscribe = subscribePlates(() => {
       mockGetStats().then((stats) => {
         if (stats.plateCounts) setRawData(stats.plateCounts);
       });
-    };
-
-    // Đăng ký nhận dữ liệu realtime
-    const unsubscribe = subscribePlates(handleNewPlate);
-
-    return () => {
-      unsubscribe();
-    };
+    });
+    return () => unsubscribe();
   }, []);
 
-  // Xử lý lọc và nhóm dữ liệu theo timeUnit, ngày tháng năm
-  const [filteredData, setFilteredData] = useState([]);
-
   useEffect(() => {
-    if (!Array.isArray(rawData)) return;
+    const group = {};
+    rawData.forEach(({ timestamp, count }) => {
+      const date = new Date(timestamp.replace(' ', 'T'));
+      const c = count >= 0 ? count : 0;
+      let key = '';
 
-    const groupBy = {};
-
-    rawData.forEach((item) => {
-      const date = new Date(item.timestamp.replace(' ', 'T'));
-      const count = item.count >= 0 ? item.count : 0;
-
-      if (timeUnit === 'hour') {
-        if (
-          date.getFullYear() === selectedYear &&
-          date.getMonth() + 1 === selectedMonth &&
-          date.getDate() === selectedDay
-        ) {
-          const key = date.getHours().toString().padStart(2, '0') + ':00';
-          groupBy[key] = (groupBy[key] || 0) + count;
-        }
-      } else if (timeUnit === 'day') {
-        if (
-          date.getFullYear() === selectedYear &&
-          date.getMonth() + 1 === selectedMonth
-        ) {
-          const key = date.getDate().toString().padStart(2, '0');
-          groupBy[key] = (groupBy[key] || 0) + count;
-        }
-      } else if (timeUnit === 'month') {
-        if (date.getFullYear() === selectedYear) {
-          const key = (date.getMonth() + 1).toString().padStart(2, '0');
-          groupBy[key] = (groupBy[key] || 0) + count;
-        }
+      if (timeUnit === 'hour' && matchDate(date, selectedYear, selectedMonth, selectedDay)) {
+        key = date.getHours().toString().padStart(2, '0') + ':00';
+      } else if (timeUnit === 'day' && matchDate(date, selectedYear, selectedMonth)) {
+        key = date.getDate().toString().padStart(2, '0');
+      } else if (timeUnit === 'month' && date.getFullYear() === selectedYear) {
+        key = (date.getMonth() + 1).toString().padStart(2, '0');
       }
+
+      if (key) group[key] = (group[key] || 0) + c;
     });
 
-    let fullLabels = [];
-
-    if (timeUnit === 'hour') {
-      fullLabels = Array.from({ length: 24 }, (_, i) =>
-        i.toString().padStart(2, '0') + ':00'
-      );
-    } else if (timeUnit === 'day') {
-      const daysInMonth = new Date(selectedYear, selectedMonth, 0).getDate();
-      fullLabels = Array.from(
-        { length: daysInMonth },
-        (_, i) => (i + 1).toString().padStart(2, '0')
-      );
-    } else if (timeUnit === 'month') {
-      fullLabels = Array.from({ length: 12 }, (_, i) =>
-        (i + 1).toString().padStart(2, '0')
-      );
-    }
-
-    const finalData = fullLabels.map((label) => ({
-      time: label,
-      count: groupBy[label] || 0,
-    }));
-
-    setFilteredData(finalData);
+    const labels = generateLabels(timeUnit, selectedYear, selectedMonth);
+    const final = labels.map((label) => ({ time: label, count: group[label] || 0 }));
+    setFilteredData(final);
   }, [rawData, timeUnit, selectedYear, selectedMonth, selectedDay]);
 
-  // Chuẩn bị data và options cho ChartJS
+  useEffect(() => {
+    if (!filteredData.length) return;
+    const target = filteredData.map((d) => d.count);
+    let start = 0;
+    const duration = 1000;
+    let id;
+
+    const animate = (t) => {
+      if (!start) start = t;
+      const progress = Math.min((t - start) / duration, 1);
+      setAnimatedData(target.map((v) => Math.floor(v * progress)));
+      if (progress < 1) id = requestAnimationFrame(animate);
+    };
+
+    id = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(id);
+  }, [filteredData]);
+
   const labels = filteredData.map((d) => d.time);
-  const counts = filteredData.map((d) => d.count);
+  const maxCount = Math.max(...animatedData, 10);
+  const step = Math.ceil(maxCount / 9);
+  const maxY = step * 9;
 
   const chartData = {
     labels,
     datasets: [
       {
         label: 'Số lượng xe nhận diện',
-        data: counts,
+        data: animatedData,
         borderColor: 'rgb(75, 192, 192)',
         backgroundColor: 'rgba(75, 192, 192, 0.4)',
         fill: true,
@@ -182,15 +130,17 @@ export default function PlatesChart() {
     ],
   };
 
-  const options = {
+  const chartOptions = {
+    responsive: true,
+    animation: { duration: 1500, easing: 'easeOutQuart' },
     scales: {
       y: {
         beginAtZero: true,
         min: 0,
-        ticks: { stepSize: 1 },
+        max: maxY,
+        ticks: { stepSize: step },
       },
     },
-    responsive: true,
     plugins: {
       legend: {
         position: 'bottom',
@@ -198,9 +148,7 @@ export default function PlatesChart() {
           usePointStyle: true,
           pointStyle: 'line',
           boxWidth: 20,
-          boxHeight: 20,
           font: { size: 14 },
-          borderWidth: 4,
         },
       },
       title: {
@@ -211,73 +159,74 @@ export default function PlatesChart() {
   };
 
   return (
-    <div style={{ width: '100%', maxWidth: 800 }}>
-      <div style={{ marginBottom: 16 }}>
-        <label htmlFor="selectYear">Chọn năm:&nbsp;</label>
-        <select
-          id="selectYear"
-          value={selectedYear}
-          onChange={(e) => {
-            const y = Number(e.target.value);
-            setSelectedYear(y);
-            setSelectedMonth(null);
-            setSelectedDay(null);
-          }}
+    <div style={{ display: 'flex', justifyContent: 'center', padding: 24 }}>
+      <div style={{ maxWidth: 800, width: '100%' }}>
+        <div
+          style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}
         >
-          {yearOptions.map((y) => (
-            <option key={y} value={y}>
-              {y}
-            </option>
-          ))}
-        </select>
-      </div>
+          <span style={{ fontWeight: 'bold', color: 'black', backgroundColor: '#f0f0f0', padding: '4px 8px', borderRadius: '4px' }}>
+            Chọn thời gian:
+          </span>
 
-      <div style={{ marginBottom: 16 }}>
-        <label htmlFor="selectMonth">Chọn tháng :&nbsp;</label>
-        <select
-          id="selectMonth"
-          value={selectedMonth || ''}
-          onChange={(e) => {
-            const m = e.target.value === '' ? null : Number(e.target.value);
-            setSelectedMonth(m);
-            setSelectedDay(null);
-          }}
-        >
-          <option value="">-- Chọn tháng --</option>
-          {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
-            <option key={m} value={m}>
-              {m.toString().padStart(2, '0')}
-            </option>
-          ))}
-        </select>
-      </div>
 
-      <div style={{ marginBottom: 16 }}>
-        <label htmlFor="selectDay">Chọn ngày :&nbsp;</label>
-        <select
-          id="selectDay"
-          value={selectedDay || ''}
-          onChange={(e) => {
-            const d = e.target.value === '' ? null : Number(e.target.value);
-            setSelectedDay(d);
-          }}
-          disabled={!selectedMonth}
-        >
-          <option value="">-- Chọn ngày --</option>
-          {selectedYear && selectedMonth
-            ? Array.from(
-                { length: new Date(selectedYear, selectedMonth, 0).getDate() },
-                (_, i) => i + 1
-              ).map((d) => (
-                <option key={d} value={d}>
-                  {d.toString().padStart(2, '0')}
-                </option>
-              ))
-            : null}
-        </select>
-      </div>
+          <select value={selectedYear} onChange={(e) => handleYearChange(e)}>
+            {Array.from({ length: 6 }, (_, i) => now.getFullYear() - i).map((y) => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
 
-      <Line data={chartData} options={options} />
+          <select value={selectedMonth || ''} onChange={(e) => handleMonthChange(e)}>
+            <option value="">-- Tháng --</option>
+            {Array.from({ length: 12 }, (_, i) => (
+              <option key={i + 1} value={i + 1}>{(i + 1).toString().padStart(2, '0')}</option>
+            ))}
+          </select>
+
+          <select
+            value={selectedDay || ''}
+            onChange={(e) => setSelectedDay(e.target.value ? Number(e.target.value) : null)}
+            disabled={!selectedMonth}
+          >
+            <option value="">-- Ngày --</option>
+            {selectedYear && selectedMonth &&
+              Array.from({ length: new Date(selectedYear, selectedMonth, 0).getDate() }, (_, i) => (
+                <option key={i + 1} value={i + 1}>{(i + 1).toString().padStart(2, '0')}</option>
+              ))}
+          </select>
+        </div>
+
+        <Line data={chartData} options={chartOptions} plugins={[whiteBackgroundPlugin]} />
+      </div>
     </div>
   );
+
+  function handleYearChange(e) {
+    const y = Number(e.target.value);
+    setSelectedYear(y);
+    setSelectedMonth(null);
+    setSelectedDay(null);
+  }
+
+  function handleMonthChange(e) {
+    const m = e.target.value === '' ? null : Number(e.target.value);
+    setSelectedMonth(m);
+    setSelectedDay(null);
+  }
+
+  function matchDate(date, year, month, day = null) {
+    return (
+      date.getFullYear() === year &&
+      date.getMonth() + 1 === month &&
+      (day === null || date.getDate() === day)
+    );
+  }
+
+  function generateLabels(unit, year, month) {
+    if (unit === 'hour') return Array.from({ length: 24 }, (_, i) => `${i.toString().padStart(2, '0')}:00`);
+    if (unit === 'day') {
+      const days = new Date(year, month, 0).getDate();
+      return Array.from({ length: days }, (_, i) => (i + 1).toString().padStart(2, '0'));
+    }
+    return Array.from({ length: 12 }, (_, i) => (i + 1).toString().padStart(2, '0'));
+  }
 }
