@@ -151,10 +151,10 @@ export function CameraViewer() {
 
         try {
           // In a real application, you would send this blob to your backend
-          // const formData = new FormData();
-          // formData.append('image', blob);
-          // const response = await fetch('your-api-endpoint', { method: 'POST', body: formData });
-          // const data = await response.json();
+          const formData = new FormData();
+          formData.append('image', blob);
+          const response = await fetch('http://localhost:8000/upload', { method: 'POST', body: formData });
+          const data = await response.json();
 
           // Simulate API call
           await new Promise((resolve) => setTimeout(resolve, 1500))
