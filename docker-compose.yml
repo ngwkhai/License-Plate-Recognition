@@ -1,0 +1,43 @@
+services:
+  db:
+    image: postgres:13
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: backend_user
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: license_plate_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend_db/app/init.sql:/docker-entrypoint-initdb.d/init.sql  # Cập nhật đường dẫn
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "backend_user", "-d", "license_plate_db"]
+      interval: 10s
+      timeout: 30s
+      retries: 20
+
+  backend-db:
+    image: license-plate-recognition-backend-db
+    build:
+      context: ./backend_db
+      dockerfile: Dockerfile
+    container_name: backend_db
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_USER: backend_user
+      DB_PASS: secret
+      DB_NAME: license_plate_db
+      DB_PORT: 5432
+      SECRET_KEY: supersecretkey
+      PYTHONPATH: /app  # Đảm bảo Python tìm thấy các module
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./backend_db:/app
+
+volumes:
+  postgres_data:
