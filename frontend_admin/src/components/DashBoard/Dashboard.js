@@ -4,6 +4,7 @@ import { getStats } from '../../api/stats';
 import TotalPlates from './TotalPlates';
 import PlatesChart from './PlatesChart';
 import LatestPlatesList from './LatestPlatesList';
+import '../../style/Dashboard.css';
 
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
@@ -33,10 +34,12 @@ export default function Dashboard() {
   if (!stats) return <div>Đang tải dữ liệu...</div>;
 
   return (
-    <div>
-      <TotalPlates count={stats.totalPlates} />
-      <LatestPlatesList plates={latestPlates} />
-      <PlatesChart rawData={chartData} />
+    <div className="dashboard-bg">
+      <TotalPlates className="total-plates" count={stats.totalPlates} />
+      <LatestPlatesList className="latest-plates-list" plates={latestPlates} />
+      <PlatesChart className="plates-chart" rawData={chartData} />
     </div>
   );
+
+  
 }
