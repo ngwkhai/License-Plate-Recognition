@@ -23,7 +23,7 @@ CREATE TABLE users (
     id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     username VARCHAR(255) NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    role VARCHAR(20) DEFAULT 'user',
+    role VARCHAR(20) DEFAULT 'admin',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
