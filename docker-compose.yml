@@ -23,7 +23,7 @@ services:
       timeout: 30s
       retries: 20
 
-  # Backend database API service
+  # Backend database service
   backend-db:
     build:
       context: ./backend_db
@@ -45,26 +45,40 @@ services:
     volumes:
       - ./backend_db:/app
 
-  # AI backend service
-  backend_ai:
-    build:
-      context: ./backend_ai
-    container_name: backend_ai
-    ports:
-      - "8000:8000"
-    volumes:
-      - ./backend_ai:/app
-    restart: always
 
-  # Frontend user service
-  frontend_user:
+  # # AI backend service
+  # backend_ai:
+  #   build:
+  #     context: ./backend_ai
+  #   container_name: backend_ai
+  #   ports:
+  #     - "8000:8000"
+  #   volumes:
+  #     - ./backend_ai:/app
+  #   restart: always
+
+  # # Frontend user service
+  # frontend_user:
+  #   build:
+  #     context: ./frontend_user
+  #   container_name: frontend_user
+  #   ports:
+  #     - "3000:3000"
+  #   volumes:
+  #     - ./frontend_user:/app
+  #   depends_on:
+  #     - backend_ai
+  #   restart: always
+
+    # Frontend admin service (bổ sung)
+  frontend_admin:
     build:
-      context: ./frontend_user
-    container_name: frontend_user
+      context: ./frontend_admin
+    container_name: frontend_admin
     ports:
-      - "3000:3000"
+      - "5174:5174"  
     volumes:
-      - ./frontend_user:/app
+      - ./frontend_admin:/app
     depends_on:
-      - backend_ai
+      - backend-db
     restart: always

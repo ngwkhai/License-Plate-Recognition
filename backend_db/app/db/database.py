@@ -9,8 +9,8 @@ load_dotenv()
 
 DB_USER = os.getenv("DB_USER", "backend_user")
 DB_PASS = os.getenv("DB_PASS", "secret")
-DB_HOST = os.getenv("DB_HOST", "db")
-DB_PORT = os.getenv("DB_PORT", "5432")
+DB_HOST = os.getenv("DB_HOST", "db")          
+DB_PORT = os.getenv("DB_PORT", "5432")        
 DB_NAME = os.getenv("DB_NAME", "license_plate_db")
 
 print(f"Connecting to database: {DB_NAME}")
