@@ -8,7 +8,8 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./backend_ai:/app
+      - ./backend_ai:/backend_ai
+    working_dir: /backend_ai
     restart: always
 
   frontend_user:
@@ -17,8 +18,6 @@ services:
     container_name: frontend_user
     ports:
       - "3000:3000"
-    volumes:
-      - ./frontend_user:/app
     depends_on:
       - backend_ai
     restart: always

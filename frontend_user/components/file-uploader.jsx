@@ -81,93 +81,94 @@ export function FileUploader() {
   }
 
   const uploadFiles = async () => {
-    if (files.length === 0) {
-      toast({
-        title: "Không có file nào được chọn",
-        description: "Vui lòng chọn ít nhất một file để tải lên",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setIsLoading(true)
-    setProgress(0)
-
-    try {
-      // Simulate progress
-      const interval = setInterval(() => {
-        setProgress((prev) => {
-          if (prev >= 95) {
-            clearInterval(interval)
-            return prev
-          }
-          return prev + 5
-        })
-      }, 100)
-
-      // Simulate API call
-      // In a real application, you would use FormData to send files to your backend
-      const formData = new FormData();
-      files.forEach(file => formData.append('files', file));
-      const response = await fetch('http://localhost:8000/upload', { method: 'POST', body: formData });
-      const data = await response.json();
-
-      // Simulate API response after 2 seconds
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-
-      clearInterval(interval)
-      setProgress(100)
-
-      // Mock results
-      const mockResults = files.map((file, index) => {
-        const licensePlate = `${Math.floor(Math.random() * 90) + 10}A-${Math.floor(Math.random() * 90000) + 10000}`
-        const result = {
-          id: `result-${Date.now()}-${index}`,
-          filename: file.name,
-          licensePlate: licensePlate,
-          boundingBox: {
-            x: Math.floor(Math.random() * 50) + 25,
-            y: Math.floor(Math.random() * 50) + 25,
-            width: Math.floor(Math.random() * 100) + 100,
-            height: Math.floor(Math.random() * 50) + 30,
-          },
-          timestamp: new Date().toISOString(),
-          imageUrl: previews[index],
-          fileType: file.type,
-        }
-
-        // Add to history - create a new array instead of modifying the existing one
-        const newHistoryItem = {
-          id: result.id,
-          licensePlate: result.licensePlate,
-          timestamp: result.timestamp,
-          source: "upload",
-          filename: result.filename,
-          imageUrl: previews[index],
-          fileType: file.type,
-        }
-
-        setHistory((prevHistory) => [newHistoryItem, ...prevHistory])
-
-        return result
-      })
-
-      setResults(mockResults)
-
-      toast({
-        title: "Tải lên thành công",
-        description: `Đã nhận dạng ${files.length} file`,
-      })
-    } catch (error) {
-      toast({
-        title: "Lỗi khi tải lên",
-        description: "Đã xảy ra lỗi khi tải lên file. Vui lòng thử lại sau.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
+  if (files.length === 0) {
+    toast({
+      title: "Không có file nào được chọn",
+      description: "Vui lòng chọn ít nhất một file để tải lên",
+      variant: "destructive",
+    })
+    return
   }
+
+  setIsLoading(true)
+  setProgress(0)
+
+  try {
+    const interval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 95) {
+          clearInterval(interval)
+          return prev
+        }
+        return prev + 5
+      })
+    }, 100)
+
+    const formData = new FormData()
+    files.forEach((file) => formData.append("files", file)) // Note: 'files' phải khớp với backend
+
+    const response = await fetch("http://localhost:8000/upload", {
+      method: "POST",
+      body: formData,
+    })
+
+    const data = await response.json()
+    clearInterval(interval)
+    setProgress(100)
+
+    const processedResults = data.map((result, index) => {
+      // Convert base64 to Blob and then to object URL
+      const byteCharacters = atob(result.imageBase64)
+      const byteNumbers = new Array(byteCharacters.length)
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i)
+      }
+      const byteArray = new Uint8Array(byteNumbers)
+      const blob = new Blob([byteArray], { type: result.fileType })
+      const imageUrl = URL.createObjectURL(blob)
+
+      const resultItem = {
+        id: `result-${Date.now()}-${index}`,
+        filename: result.filename,
+        licensePlate: result.licensePlate,
+        boundingBox: result.boundingBox,
+        timestamp: result.timestamp,
+        imageUrl,
+        fileType: result.fileType,
+      }
+
+      // Add to history
+      const historyItem = {
+        id: resultItem.id,
+        licensePlate: resultItem.licensePlate,
+        timestamp: resultItem.timestamp,
+        source: "upload",
+        filename: resultItem.filename,
+        imageUrl: resultItem.imageUrl,
+        fileType: resultItem.fileType,
+      }
+
+      setHistory((prevHistory) => [historyItem, ...prevHistory])
+
+      return resultItem
+    })
+
+    setResults(processedResults)
+
+    toast({
+      title: "Tải lên thành công",
+      description: `Đã nhận dạng ${processedResults.length} biển số`,
+    })
+  } catch (error) {
+    toast({
+      title: "Lỗi khi tải lên",
+      description: "Đã xảy ra lỗi khi tải lên file. Vui lòng thử lại sau.",
+      variant: "destructive",
+    })
+  } finally {
+    setIsLoading(false)
+  }
+}
 
   return (
     <div className="space-y-6">
