@@ -20,24 +20,18 @@ export function CameraViewer() {
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const streamRef = useRef(null)
+  const wsRef = useRef(null)
   const { toast } = useToast()
   const [history, setHistory] = useLocalStorage("license-plate-history", [])
 
-  // Get available camera devices
   useEffect(() => {
     async function getDevices() {
       try {
-        // Request permission first to ensure we get devices
         await navigator.mediaDevices.getUserMedia({ video: true })
-
         const devices = await navigator.mediaDevices.enumerateDevices()
         const videoDevices = devices.filter((device) => device.kind === "videoinput")
-
         setDevices(videoDevices)
-
-        if (videoDevices.length > 0) {
-          setSelectedDeviceId(videoDevices[0].deviceId)
-        }
+        if (videoDevices.length > 0) setSelectedDeviceId(videoDevices[0].deviceId)
       } catch (error) {
         console.error("Error accessing camera:", error)
         toast({
@@ -47,14 +41,10 @@ export function CameraViewer() {
         })
       }
     }
-
     getDevices()
-
-    // Cleanup function
     return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop())
-      }
+      if (streamRef.current) streamRef.current.getTracks().forEach((track) => track.stop())
+      if (wsRef.current) wsRef.current.close()
     }
   }, [toast])
 
@@ -67,29 +57,58 @@ export function CameraViewer() {
       })
       return
     }
-
     try {
-      // Stop any existing stream
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop())
-      }
-
-      // Start a new stream
+      if (streamRef.current) streamRef.current.getTracks().forEach((track) => track.stop())
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          deviceId: { exact: selectedDeviceId },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
+        video: { deviceId: { exact: selectedDeviceId }, width: { ideal: 1280 }, height: { ideal: 720 } },
       })
-
       streamRef.current = stream
-
       if (videoRef.current) {
         videoRef.current.srcObject = stream
         videoRef.current.play()
       }
-
+      wsRef.current = new WebSocket("ws://localhost:8000/ws")
+      wsRef.current.onmessage = (event) => {
+        const data = JSON.parse(event.data)
+        if (canvasRef.current) {
+          const canvas = canvasRef.current
+          const context = canvas.getContext("2d")
+          const img = new Image()
+          img.onload = () => {
+            canvas.width = img.width
+            canvas.height = img.height
+            context.drawImage(img, 0, 0)
+            context.strokeStyle = "#FF0000"
+            context.lineWidth = 3
+            context.strokeRect(...data.boundingBox)
+            context.fillStyle = "#FF0000"
+            context.font = "16px Arial"
+            context.fillText(data.licensePlate, data.boundingBox[0], data.boundingBox[1] - 5)
+            const imageData = canvas.toDataURL("image/jpeg")
+            const mockResult = {
+              id: `result-${Date.now()}`,
+              licensePlate: data.licensePlate,
+              boundingBox: data.boundingBox,
+              timestamp: new Date().toISOString(),
+              imageData: imageData,
+            }
+            setResult(mockResult)
+            const newHistoryItem = {
+              id: mockResult.id,
+              licensePlate: mockResult.licensePlate,
+              timestamp: mockResult.timestamp,
+              source: "camera",
+              imageUrl: imageData,
+            }
+            setHistory((prev) => [newHistoryItem, ...prev])
+            toast({
+              title: "Nhận dạng thành công",
+              description: `Đã nhận dạng biển số: ${mockResult.licensePlate}`,
+            })
+          }
+          img.src = `data:image/jpeg;base64,${data.image}`
+        }
+      }
       setIsStreaming(true)
       setResult(null)
     } catch (error) {
@@ -103,125 +122,11 @@ export function CameraViewer() {
   }
 
   const stopStream = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop())
-      streamRef.current = null
-    }
-
-    if (videoRef.current) {
-      videoRef.current.srcObject = null
-    }
-
+    if (streamRef.current) streamRef.current.getTracks().forEach((track) => track.stop())
+    streamRef.current = null
+    if (videoRef.current) videoRef.current.srcObject = null
+    if (wsRef.current) wsRef.current.close()
     setIsStreaming(false)
-  }
-
-  const resetResult = () => {
-    setResult(null)
-  }
-
-  const captureFrame = () => {
-    if (!videoRef.current || !canvasRef.current || !isStreaming) {
-      toast({
-        title: "Không thể chụp khung hình",
-        description: "Vui lòng đảm bảo camera đang hoạt động.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    const video = videoRef.current
-    const canvas = canvasRef.current
-    const context = canvas.getContext("2d")
-
-    if (!context) return
-
-    // Set canvas dimensions to match video
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
-
-    // Draw the current video frame to the canvas
-    context.drawImage(video, 0, 0, canvas.width, canvas.height)
-
-    // Convert canvas to blob
-    canvas.toBlob(
-      async (blob) => {
-        if (!blob) return
-
-        setIsLoading(true)
-
-        try {
-          // In a real application, you would send this blob to your backend
-          const formData = new FormData();
-          formData.append('image', blob);
-          const response = await fetch('http://localhost:8000/upload', { method: 'POST', body: formData });
-          const data = await response.json();
-
-          // Simulate API call
-          await new Promise((resolve) => setTimeout(resolve, 1500))
-
-          // Generate a random bounding box
-          const boundingBox = {
-            x: Math.floor(Math.random() * 50) + 25,
-            y: Math.floor(Math.random() * 50) + 25,
-            width: Math.floor(Math.random() * 100) + 100,
-            height: Math.floor(Math.random() * 50) + 30,
-          }
-
-          // Draw the bounding box on the canvas
-          context.strokeStyle = "#FF0000"
-          context.lineWidth = 3
-          context.strokeRect(boundingBox.x, boundingBox.y, boundingBox.width, boundingBox.height)
-
-          // Generate a random license plate
-          const licensePlate = `${Math.floor(Math.random() * 90) + 10}A-${Math.floor(Math.random() * 90000) + 10000}`
-
-          // Add label above the bounding box
-          context.fillStyle = "#FF0000"
-          context.font = "16px Arial"
-          context.fillText(licensePlate, boundingBox.x, boundingBox.y - 5)
-
-          // Get image data for storage
-          const imageData = canvas.toDataURL("image/jpeg")
-
-          // Mock result
-          const mockResult = {
-            id: `result-${Date.now()}`,
-            licensePlate: licensePlate,
-            boundingBox: boundingBox,
-            timestamp: new Date().toISOString(),
-            imageData: imageData,
-          }
-
-          setResult(mockResult)
-
-          // Add to history - create a new array instead of modifying the existing one
-          const newHistoryItem = {
-            id: mockResult.id,
-            licensePlate: mockResult.licensePlate,
-            timestamp: mockResult.timestamp,
-            source: "camera",
-            imageUrl: imageData,
-          }
-
-          setHistory((prevHistory) => [newHistoryItem, ...prevHistory])
-
-          toast({
-            title: "Nhận dạng thành công",
-            description: `Đã nhận dạng biển số: ${mockResult.licensePlate}`,
-          })
-        } catch (error) {
-          toast({
-            title: "Lỗi khi nhận dạng",
-            description: "Đã xảy ra lỗi khi nhận dạng biển số. Vui lòng thử lại sau.",
-            variant: "destructive",
-          })
-        } finally {
-          setIsLoading(false)
-        }
-      },
-      "image/jpeg",
-      0.95,
-    )
   }
 
   return (
@@ -244,68 +149,25 @@ export function CameraViewer() {
                 </SelectContent>
               </Select>
             </div>
-
             <div className="flex items-center space-x-2">
-              <Switch
-                id="stream-toggle"
-                checked={isStreaming}
-                onCheckedChange={(checked) => {
-                  if (checked) {
-                    startStream()
-                  } else {
-                    stopStream()
-                  }
-                }}
-              />
+              <Switch id="stream-toggle" checked={isStreaming} onCheckedChange={(checked) => (checked ? startStream() : stopStream())} />
               <Label htmlFor="stream-toggle">{isStreaming ? "Tắt camera" : "Bật camera"}</Label>
             </div>
           </div>
 
           <div className="relative bg-black rounded-lg overflow-hidden">
             <video ref={videoRef} className={`w-full ${isStreaming ? "block" : "hidden"}`} autoPlay playsInline muted />
-
             {!isStreaming && (
               <div className="flex flex-col items-center justify-center h-64 text-white">
                 <Camera className="h-12 w-12 mb-4" />
                 <p>Camera đang tắt</p>
               </div>
             )}
-
             <canvas ref={canvasRef} className="hidden" />
           </div>
-
-          {isStreaming && (
-            <div className="flex justify-center">
-              <Button onClick={captureFrame} disabled={isLoading} className="w-full md:w-auto">
-                {isLoading ? (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    Đang xử lý...
-                  </>
-                ) : (
-                  <>
-                    <CameraIcon className="mr-2 h-4 w-4" />
-                    Chụp và nhận dạng
-                  </>
-                )}
-              </Button>
-            </div>
-          )}
         </CardContent>
       </Card>
-
-      {result && (
-        <div className="mt-8 space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">Kết quả nhận dạng</h2>
-            <Button variant="outline" size="sm" onClick={resetResult}>
-              <X className="h-4 w-4 mr-2" />
-              Thoát
-            </Button>
-          </div>
-          <RecognitionResult result={result} showImage />
-        </div>
-      )}
+      {result && <RecognitionResult result={result} onReset={() => setResult(null)} />}
     </div>
   )
 }
