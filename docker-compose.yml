@@ -4,81 +4,79 @@ volumes:
   postgres_data:
 
 services:
-  # PostgreSQL database service
-  db:
-    image: postgres:13
-    container_name: postgres_db
-    environment:
-      POSTGRES_USER: backend_user
-      POSTGRES_PASSWORD: secret
-      POSTGRES_DB: license_plate_db
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./backend_db/app/init.sql:/docker-entrypoint-initdb.d/init.sql
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD", "pg_isready", "-U", "backend_user", "-d", "license_plate_db"]
-      interval: 10s
-      timeout: 30s
-      retries: 20
-
-  # Backend database service
-  backend-db:
-    build:
-      context: ./backend_db
-      dockerfile: Dockerfile
-    container_name: backend_db
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      DB_HOST: db
-      DB_USER: backend_user
-      DB_PASS: secret
-      DB_NAME: license_plate_db
-      DB_PORT: 5432
-      SECRET_KEY: supersecretkey
-      PYTHONPATH: /app
-    ports:
-      - "8001:8001"
-    volumes:
-      - ./backend_db:/app
-
-  # # AI backend service
-  # backend_ai:
-  #   build:
-  #     context: ./backend_ai
-  #   container_name: backend_ai
-  #   ports:
-  #     - "8000:8000"
+  # # PostgreSQL database service
+  # db:
+  #   image: postgres:13
+  #   container_name: postgres_db
+  #   environment:
+  #     POSTGRES_USER: backend_user
+  #     POSTGRES_PASSWORD: secret
+  #     POSTGRES_DB: license_plate_db
   #   volumes:
-  #     - ./backend_ai:/backend_ai
-  #   working_dir: /backend_ai
-  #   restart: always
-
-  # # Frontend user service
-  # frontend_user:
-  #   build:
-  #     context: ./frontend_user
-  #   container_name: frontend_user
+  #     - postgres_data:/var/lib/postgresql/data
+  #     - ./backend_db/app/init.sql:/docker-entrypoint-initdb.d/init.sql
   #   ports:
-  #     - "3000:3000"
-  #   volumes:
-  #     - ./frontend_user:/app
+  #     - "5432:5432"
+  #   healthcheck:
+  #     test: ["CMD", "pg_isready", "-U", "backend_user", "-d", "license_plate_db"]
+  #     interval: 10s
+  #     timeout: 30s
+  #     retries: 20
+
+  # # Backend database service
+  # backend-db:
+  #   build:
+  #     context: ./backend_db
+  #     dockerfile: Dockerfile
+  #   container_name: backend_db
   #   depends_on:
-  #     - backend_ai
-  #   restart: always
+  #     db:
+  #       condition: service_healthy
+  #   environment:
+  #     DB_HOST: db
+  #     DB_USER: backend_user
+  #     DB_PASS: secret
+  #     DB_NAME: license_plate_db
+  #     DB_PORT: 5432
+  #     SECRET_KEY: supersecretkey
+  #     PYTHONPATH: /app
+  #   ports:
+  #     - "8001:8001"
+  #   volumes:
+  #     - ./backend_db:/app
+
+  # AI backend service
+  backend_ai:
+    build:
+      context: ./backend_ai
+    container_name: backend_ai
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend_ai:/backend_ai
+    working_dir: /backend_ai
+    restart: always
+
+  # Frontend user service
+  frontend_user:
+    build:
+      context: ./frontend_user
+    container_name: frontend_user
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend_ai
+    restart: always
 
 
-  frontend_admin:
-      build:
-        context: ./frontend_admin
-      container_name: frontend_admin
-      ports:
-        - "5174:5174"  
-      volumes:
-        - ./frontend_admin:/app
-      depends_on:
-        - backend-db
-      restart: always
+  # frontend_admin:
+  #     build:
+  #       context: ./frontend_admin
+  #     container_name: frontend_admin
+  #     ports:
+  #       - "5174:5174"  
+  #     volumes:
+  #       - ./frontend_admin:/app
+  #     depends_on:
+  #       - backend-db
+  #     restart: always
