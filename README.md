@@ -6,26 +6,28 @@ Hệ thống nhận diện biển số xe và hỗ trợ tra cứu phạt nguộ
 - [Mô tả dự án](#mo-ta-du-an)
   - [Tổng quan mục tiêu](#tong-quan-muc-tieu)
   - [Nhiệm vụ chính](#nhiem-vu-chinh)
-  - [Trường hợp sử dụng](#truong-hop-su-dung)
+  - [Trường hợp sử dụng](#truong-hop-su-dung-tieu-bieu)
 - [Kiến trúc hệ thống](#kien-truc-he-thong)
 - [Liên kết Docker Hub](#lien-ket-docker-hub)
 - [Hướng dẫn chạy Docker Compose](#huong-dan-chay-docker-compose)
 - [Hướng dẫn sử dụng](#huong-dan-su-dung)
+
 ---
 
 ## Thành viên nhóm
 
-23020384	  Nguyễn Đình Khải
-23020388	  Nguyễn Thế Khôi
-23020414	  Võ Duy Quang
-223020376  Nguyễn Đức Huy
-230200344  Ngô Quang Dũng
-
+- 23020384  Nguyễn Đình Khải  
+- 23020388  Nguyễn Thế Khôi  
+- 23020414  Võ Duy Quang  
+- 223020376 Nguyễn Đức Huy  
+- 230200344  Ngô Quang Dũng  
 
 ---
 
 ## Mô tả dự án
+
 ### Tổng quan mục tiêu
+
 Dự án phát triển hệ thống nhận diện biển số xe thời gian thực sử dụng AI nhằm nâng cao hiệu quả quản lý giao thông và hỗ trợ người dân tra cứu vi phạm phạt nguội một cách tiện lợi.
 
 Hệ thống được thiết kế để:
@@ -38,7 +40,8 @@ Hệ thống được thiết kế để:
 
 Hệ thống được triển khai theo kiến trúc microservices với các thành phần riêng biệt, sử dụng Docker để đảm bảo khả năng mở rộng, bảo trì dễ dàng và hiệu suất xử lý cao trong môi trường thực tế.
 
- ### Nhiệm vụ chính
+### Nhiệm vụ chính
+
 - Phát triển mô hình AI nhận diện biển số xe: Sử dụng các kỹ thuật học sâu (deep learning) hiện đại như YOLOv5 cho việc phát hiện vùng biển số và OCR (nhận dạng ký tự quang học) để trích xuất chính xác các ký tự trên biển số xe.
 
 - Xây dựng hệ thống xử lý đa dạng nguồn dữ liệu: Hỗ trợ nhận dữ liệu đầu vào từ nhiều hình thức như ảnh tĩnh, video, hoặc luồng camera thời gian thực.
@@ -48,7 +51,8 @@ Hệ thống được triển khai theo kiến trúc microservices với các th
 - Cung cấp giao diện người dùng thân thiện: Phát triển các ứng dụng frontend hỗ trợ người dân gửi dữ liệu, xem kết quả nhận dạng và tra cứu phạt nguội, đồng thời cung cấp công cụ quản trị cho người quản lý hệ thống để giám sát và báo cáo.
 
 - Đảm bảo hoạt động ổn định, bảo mật và hiệu suất cao: Sử dụng Docker và kiến trúc microservices giúp triển khai nhanh, mở rộng dễ dàng và tăng độ bền vững của hệ thống.
-  ### Trường hợp sử dụng tiêu biểu
+
+### Trường hợp sử dụng tiêu biểu
 
 #### Người dân / Người dùng cuối:
 
@@ -75,16 +79,14 @@ Hệ thống được triển khai theo kiến trúc microservices với các th
 
 ---
 
-
 ## Kiến trúc hệ thống
-
 
 Hệ thống nhận diện biển số xe thời gian thực được xây dựng theo kiến trúc **microservices**, mỗi thành phần được đóng gói trong Docker container, giao tiếp qua API và message broker, giúp dễ dàng mở rộng và bảo trì.
 
 ### Các thành phần chính
 
 - **Frontend User**:  
-  Giao diện cho người dân hoặc thiết bị gửi ảnh, video, luồng camera trực tiếp. Hiển thị kết quả nhận dạng và hỗ trợ tra cứu phạt nguội qua trang csgt.vn. Lưu trữ lịch sử tra cứu cũng như gửi hình ảnh/ video cho hệ thống nhận diện
+  Giao diện cho người dân hoặc thiết bị gửi ảnh, video, luồng camera trực tiếp. Hiển thị kết quả nhận dạng và hỗ trợ tra cứu phạt nguội qua trang csgt.vn. Lưu trữ lịch sử tra cứu cũng như gửi hình ảnh/video cho hệ thống nhận diện.
 
 - **Backend AI**:  
   Xử lý nhận diện biển số bằng mô hình YOLOv5 và OCR. Trả kết quả nhận dạng và gửi dữ liệu về Backend DB.
@@ -113,5 +115,5 @@ Hệ thống nhận diện biển số xe thời gian thực được xây dựn
 ---
 
 ## Hướng dẫn sử dụng
----
 
+---
