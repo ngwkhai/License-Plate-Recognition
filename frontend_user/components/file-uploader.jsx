@@ -40,13 +40,7 @@ export function FileUploader() {
 
     setFiles(validFiles)
 
-    // Create previews
-    const newPreviews = []
-    validFiles.forEach((file) => {
-      const url = URL.createObjectURL(file)
-      newPreviews.push(url)
-    })
-
+    const newPreviews = validFiles.map((file) => URL.createObjectURL(file))
     setPreviews(newPreviews)
     setResults([])
   }
@@ -55,7 +49,6 @@ export function FileUploader() {
     const newFiles = [...files]
     const newPreviews = [...previews]
 
-    // Revoke object URL to avoid memory leaks
     URL.revokeObjectURL(newPreviews[index])
 
     newFiles.splice(index, 1)
@@ -66,15 +59,11 @@ export function FileUploader() {
   }
 
   const resetAll = () => {
-    // Revoke all object URLs to avoid memory leaks
     previews.forEach((url) => URL.revokeObjectURL(url))
-
     setFiles([])
     setPreviews([])
     setResults([])
     setProgress(0)
-
-    // Reset file input
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
     }
@@ -94,7 +83,6 @@ export function FileUploader() {
     setProgress(0)
 
     try {
-      // Simulate progress
       const interval = setInterval(() => {
         setProgress((prev) => {
           if (prev >= 95) {
@@ -105,58 +93,57 @@ export function FileUploader() {
         })
       }, 100)
 
-      // Simulate API call
-      // In a real application, you would use FormData to send files to your backend
-      const formData = new FormData();
-      files.forEach(file => formData.append('files', file));
-      const response = await fetch('http://localhost:8000/upload', { method: 'POST', body: formData });
-      const data = await response.json();
+      const formData = new FormData()
+      files.forEach((file) => formData.append("files", file))
 
-      // Simulate API response after 2 seconds
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      const response = await fetch("http://localhost:8000/upload", {
+        method: "POST",
+        body: formData,
+      })
 
+      const data = await response.json()
       clearInterval(interval)
       setProgress(100)
 
-      // Mock results
-      const mockResults = files.map((file, index) => {
-        const licensePlate = `${Math.floor(Math.random() * 90) + 10}A-${Math.floor(Math.random() * 90000) + 10000}`
-        const result = {
+      const processedResults = data.map((result, index) => {
+        const byteCharacters = atob(result.imageBase64)
+        const byteNumbers = new Array(byteCharacters.length)
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i)
+        }
+        const byteArray = new Uint8Array(byteNumbers)
+        const blob = new Blob([byteArray], { type: result.fileType })
+        const imageUrl = URL.createObjectURL(blob)
+
+        const resultItem = {
           id: `result-${Date.now()}-${index}`,
-          filename: file.name,
-          licensePlate: licensePlate,
-          boundingBox: {
-            x: Math.floor(Math.random() * 50) + 25,
-            y: Math.floor(Math.random() * 50) + 25,
-            width: Math.floor(Math.random() * 100) + 100,
-            height: Math.floor(Math.random() * 50) + 30,
-          },
-          timestamp: new Date().toISOString(),
-          imageUrl: previews[index],
-          fileType: file.type,
-        }
-
-        // Add to history - create a new array instead of modifying the existing one
-        const newHistoryItem = {
-          id: result.id,
-          licensePlate: result.licensePlate,
-          timestamp: result.timestamp,
-          source: "upload",
           filename: result.filename,
-          imageUrl: previews[index],
-          fileType: file.type,
+          licensePlates: result.licensePlates,
+          timestamp: result.timestamp,
+          imageUrl,
+          fileType: result.fileType,
         }
 
-        setHistory((prevHistory) => [newHistoryItem, ...prevHistory])
+        const historyItem = {
+          id: resultItem.id,
+          licensePlates: resultItem.licensePlates,
+          timestamp: resultItem.timestamp,
+          source: "upload",
+          filename: resultItem.filename,
+          imageUrl: resultItem.imageUrl,
+          fileType: resultItem.fileType,
+        }
 
-        return result
+        setHistory((prevHistory) => [historyItem, ...prevHistory])
+
+        return resultItem
       })
 
-      setResults(mockResults)
+      setResults(processedResults)
 
       toast({
         title: "Tải lên thành công",
-        description: `Đã nhận dạng ${files.length} file`,
+        description: `Đã xử lý ${processedResults.length} ảnh với biển số`,
       })
     } catch (error) {
       toast({
