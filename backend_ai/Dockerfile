@@ -1,6 +1,9 @@
 # Dựa trên bản Python nhẹ
 FROM python:3.10-slim
 
+WORKDIR /app
+
+
 # Cài đặt các thư viện hệ thống cần thiết cho OpenCV và PyTorch
 RUN apt-get update && apt-get install -y \
     build-essential \
@@ -24,7 +27,8 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /backend_ai
 
 # Copy file requirements.txt và cài đặt gói Python
-RUN pip install torch==2.2.0+cpu --index-url https://download.pytorch.org/whl/cpu
+COPY first.txt .
+RUN pip install --no-cache-dir -r first.txt
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 

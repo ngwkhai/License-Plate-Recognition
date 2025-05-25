@@ -67,3 +67,14 @@ services:
     depends_on:
       - backend_ai
     restart: always
+  
+  # Frontend user service
+  frontend_admin:
+    build:
+      context: ./frontend_admin
+    container_name: frontend_admin
+    ports:
+      - "5174:5174"
+    # depends_on:
+    #   - backend_db
+    restart: always

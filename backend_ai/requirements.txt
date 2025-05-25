@@ -1,8 +1,4 @@
 fastapi
 uvicorn
+torch
 python-multipart
-numpy
-opencv-python
-pillow
-aiofiles
-python-dotenv
