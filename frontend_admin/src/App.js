@@ -5,10 +5,6 @@ import Login from "./components/Login";
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    setIsLoggedIn(!!token);
-  }, []);
 
   const handleLoginSuccess = () => {
     setIsLoggedIn(true);

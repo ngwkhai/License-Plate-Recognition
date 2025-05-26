@@ -1,11 +1,11 @@
-/* styles.css hoặc Dashboard.css */
 .dashboard-bg {
-  background-image: url('./images/nen2.png');
+  background-image: url('./images/nenDashBoard.jpeg');
   background-size: cover;
   background-position: center;
+  background-attachment: fixed;
   min-height: 100vh;
 
-  padding-top: 100px;
+  padding-top: 10px;
   z-index: -1;
 }
 
@@ -23,4 +23,41 @@
   right: 200px;
 }
 
+.horizontal-container {
+  display: flex;
+  align-items: center;    /* Căn dọc giữa */
+  gap: 900px;              /* Khoảng cách ngang giữa 2 phần tử */
+}
 
+
+.logout-button {
+  background-color: #f44336;
+  color: white;
+  border: none;
+  padding: 10px 24px;
+  font-weight: 600;
+  font-size: 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgb(244 67 54 / 0.4);
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.logout-button:hover {
+  background-color: #d32f2f;
+  box-shadow: 0 6px 8px rgb(211 47 47 / 0.6);
+}
+
+.blur-box {
+  background: rgba(255, 255, 255, 0.25); 
+  backdrop-filter: blur(10px); 
+  -webkit-backdrop-filter: blur(10px); 
+
+  border-radius: 12px;
+  padding: 20px 30px;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+  color: #000;
+  max-width: 400px;
+  margin: 10px 10px 10px 0; /* trên - phải - dưới - trái */
+  text-align: left;
+}

@@ -105,9 +105,9 @@ export default function PlatesChart({ rawData }) {
           onChange={(e) => setPeriod(e.target.value)}
           style={{ padding: "6px 12px" }}
         >
-          <option value="day">Ngày</option>
-          <option value="month">Tháng</option>
-          <option value="year">Năm</option>
+          <option value="day">Theo Ngày</option>
+          <option value="month">Theo Tháng</option>
+          <option value="year">Theo Năm</option>
         </select>
 
         {(period === "day" || period === "month") && (
@@ -152,6 +152,7 @@ export default function PlatesChart({ rawData }) {
             strokeWidth={2}
             dot={{ r: 3 }}
             activeDot={{ r: 6 }}
+            isAnimationActive={true}
           />
         </LineChart>
       </ResponsiveContainer>

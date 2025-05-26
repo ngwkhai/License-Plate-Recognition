@@ -8,7 +8,8 @@ export default function LatestPlatesList({ plates }) {
 
   return (
     <>
-      <h3>10 biển số tra cứu gần nhất</h3>
+      <h2 className="latest-plates-title">10 biển số tra cứu gần nhất</h2>
+
       <div className="latest-plates-container">
         {plates.map((plate) => {
           const key = plate.id || plate.lookup_time + plate.plate_number;

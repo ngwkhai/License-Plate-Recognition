@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import axios from "axios";
+import "../style/Login.css";
 
-const API_URL = "http://localhost:8001"; // Địa chỉ backend của bạn
+const API_URL = "http://localhost:8001";
 
 export default function Login({ onLoginSuccess }) {
   const [username, setUsername] = useState("");
@@ -23,9 +24,8 @@ export default function Login({ onLoginSuccess }) {
 
       const { access_token } = response.data;
 
-      // Lưu token nếu đăng nhập thành công
       localStorage.setItem("token", access_token);
-      onLoginSuccess(); // Gọi callback khi thành công
+      onLoginSuccess();
     } catch (err) {
       if (err.response?.status === 401) {
         setError("Tên đăng nhập hoặc mật khẩu không đúng.");
@@ -38,35 +38,46 @@ export default function Login({ onLoginSuccess }) {
   };
 
   return (
-    <div style={{ maxWidth: 400, margin: "auto", padding: 20 }}>
-      <h2>Đăng nhập</h2>
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label>Tên đăng nhập:</label>
+    <>
+      <div className="login-background"></div>
+      <div className="login-container">
+        <form className="login-form" onSubmit={handleSubmit}>
+          <h2 className="login-title">Đăng nhập</h2>
+
+          <label className="login-label" htmlFor="username">
+            Tên đăng nhập(dùng để test: reyn)
+          </label>
           <input
+            id="username"
+            className="login-input"
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             required
             autoFocus
+            placeholder="Nhập tên đăng nhập"
           />
-        </div>
-        <div style={{ marginTop: 10 }}>
-          <label>Mật khẩu:</label>
+
+          <label className="login-label" htmlFor="password">
+            Mật khẩu (dùng để test: ReynisLuv)
+          </label>
           <input
+            id="password"
+            className="login-input"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
+            placeholder="Nhập mật khẩu"
           />
-        </div>
-        {error && <p style={{ color: "red", marginTop: 10 }}>{error}</p>}
-        <button type="submit" style={{ marginTop: 15 }}>
-          Đăng nhập
-        </button>
-      </form>
-    </div>
+
+          {error && <p className="login-error">{error}</p>}
+
+          <button className="login-button" type="submit">
+            Đăng nhập
+          </button>
+        </form>
+      </div>
+    </>
   );
 }
-
-
