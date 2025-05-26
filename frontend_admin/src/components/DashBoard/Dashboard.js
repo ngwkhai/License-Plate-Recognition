@@ -50,7 +50,7 @@ export default function Dashboard({ onLogout }) {
   // Tải dữ liệu lần đầu và bắt đầu polling
   useEffect(() => {
     fetchDashboardData();
-    const interval = setInterval(fetchDashboardData, 5000); // cập nhật mỗi 5 giây
+    const interval = setInterval(fetchDashboardData, 1000); // cập nhật mỗi 1 giây
 
     return () => clearInterval(interval);
   }, [fetchDashboardData]);

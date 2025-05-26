@@ -2,6 +2,7 @@ DROP TABLE IF EXISTS lookup_logs;
 DROP TABLE IF EXISTS license_plates;
 DROP TABLE IF EXISTS users;
 
+SET timezone = 'Asia/Ho_Chi_Minh';
 -- Bảng biển số xe
 CREATE TABLE license_plates (
     id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

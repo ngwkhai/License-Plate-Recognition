@@ -91,7 +91,7 @@ def get_lookup_count_today(
 ):
     tz = pytz.timezone("Asia/Ho_Chi_Minh")
     now = datetime.now(tz)
-    today_start = tz.localize(datetime(now.year, now.month, now.day)) + timedelta(days=1)
+    today_start = tz.localize(datetime(now.year, now.month, now.day)) 
     tomorrow_start = today_start + timedelta(days=1)
 
     count = (

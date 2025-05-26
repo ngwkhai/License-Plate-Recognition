@@ -9,19 +9,24 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-function rangeArray(start, end) {
-  const arr = [];
-  for (let i = start; i <= end; i++) arr.push(i);
-  return arr;
-}
+// Tạo mảng số nguyên từ start đến end
+const rangeArray = (start, end) =>
+  Array.from({ length: end - start + 1 }, (_, i) => i + start);
 
-function getDataByPeriod(rawData, period, year, month) {
-  const dataMap = new Map();
+// Hàm lấy số ngày trong tháng của năm cụ thể
+const getDaysInMonth = (year, month) => new Date(year, month, 0).getDate();
 
-  rawData.forEach(({ date, count }) => {
-    dataMap.set(date, count);
-  });
-
+/**
+ * Xử lý dữ liệu theo chu kỳ (period)
+ * @param {Array} rawData - Dữ liệu thô dạng [{ date: "YYYY-MM-DD", count: number }, ...]
+ * @param {string} period - "day", "month", hoặc "year"
+ * @param {number} year - Năm dùng để lọc
+ * @param {number} month - Tháng dùng để lọc (chỉ khi period === "day")
+ * @returns {Array} Mảng dữ liệu dạng [{ date: "label", count: tổng }, ...]
+ */
+const getDataByPeriod = (rawData, period, year, month) => {
+  // Tạo Map để tra cứu nhanh theo date
+  const dataMap = new Map(rawData.map(({ date, count }) => [date, count]));
   const result = [];
 
   if (period === "year") {
@@ -29,56 +34,57 @@ function getDataByPeriod(rawData, period, year, month) {
     for (let y = 2020; y <= currentYear; y++) {
       let sum = 0;
       for (let m = 1; m <= 12; m++) {
-        const prefix = `${y}-${m.toString().padStart(2, "0")}`;
-        for (let d = 1; d <= 31; d++) {
-          const key = `${prefix}-${d.toString().padStart(2, "0")}`;
-          if (dataMap.has(key)) sum += dataMap.get(key);
+        const daysInMonth = getDaysInMonth(y, m);
+        const prefix = `${y}-${String(m).padStart(2, "0")}`;
+        for (let d = 1; d <= daysInMonth; d++) {
+          const key = `${prefix}-${String(d).padStart(2, "0")}`;
+          sum += dataMap.get(key) || 0;
         }
       }
       result.push({ date: y.toString(), count: sum });
     }
   } else if (period === "month") {
     for (let m = 1; m <= 12; m++) {
-      const prefix = `${year}-${m.toString().padStart(2, "0")}`;
+      const daysInMonth = getDaysInMonth(year, m);
+      const prefix = `${year}-${String(m).padStart(2, "0")}`;
       let sum = 0;
-      for (let d = 1; d <= 31; d++) {
-        const key = `${prefix}-${d.toString().padStart(2, "0")}`;
-        if (dataMap.has(key)) sum += dataMap.get(key);
+      for (let d = 1; d <= daysInMonth; d++) {
+        const key = `${prefix}-${String(d).padStart(2, "0")}`;
+        sum += dataMap.get(key) || 0;
       }
       result.push({ date: m.toString(), count: sum });
     }
   } else if (period === "day") {
-    const daysInMonth = new Date(year, month, 0).getDate();
+    const daysInMonth = getDaysInMonth(year, month);
     for (let d = 1; d <= daysInMonth; d++) {
-      const key = `${year}-${month.toString().padStart(2, "0")}-${d
-        .toString()
-        .padStart(2, "0")}`;
-      const count = dataMap.get(key) || 0;
-      result.push({ date: d.toString(), count });
+      const key = `${year}-${String(month).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      result.push({ date: d.toString(), count: dataMap.get(key) || 0 });
     }
   }
 
   return result;
-}
+};
 
 export default function PlatesChart({ rawData }) {
   const currentYear = new Date().getFullYear();
-
   const [period, setPeriod] = useState("day");
   const [year, setYear] = useState(currentYear);
   const [month, setMonth] = useState(new Date().getMonth() + 1);
 
-  const processedData = useMemo(
-    () => getDataByPeriod(rawData, period, year, month),
-    [rawData, period, year, month]
-  );
+  // Tính lại dữ liệu khi có sự thay đổi tham số
+  const processedData = useMemo(() => getDataByPeriod(rawData, period, year, month), [
+    rawData,
+    period,
+    year,
+    month,
+  ]);
 
   return (
     <div
       style={{
         width: "80%",
         maxWidth: 900,
-        margin: "20px auto", // căn giữa ngang trang
+        margin: "20px auto",
         padding: 20,
         backgroundColor: "white",
         borderRadius: 8,
@@ -92,6 +98,7 @@ export default function PlatesChart({ rawData }) {
         Thống kê số lượng tra cứu biển số theo {period}
       </h3>
 
+      {/* Controls chọn thời gian */}
       <div
         style={{
           display: "flex",
@@ -139,11 +146,12 @@ export default function PlatesChart({ rawData }) {
         )}
       </div>
 
+      {/* Biểu đồ */}
       <ResponsiveContainer width="100%" height={300}>
         <LineChart data={processedData} style={{ backgroundColor: "white" }}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="date" />
-          <YAxis allowDecimals={false} domain={["dataMin + 0", "dataMax + 5"]} />
+          <YAxis allowDecimals={false} domain={[0, "dataMax + 5"]} />
           <Tooltip />
           <Line
             type="monotone"
