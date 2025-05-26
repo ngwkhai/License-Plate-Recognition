@@ -1,10 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Path
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List
 from pydantic import BaseModel
-from datetime import datetime
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from sqlalchemy import func, and_
+import pytz
 
 from app.db.database import get_db
 from app.db.models import LookupLog, User
@@ -12,20 +12,18 @@ from app.utils.security import get_current_user  # hàm lấy user từ token, b
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
-# Schema phản hồi cho lookup log có user info
-class LookupLogWithUser(BaseModel):
-    id: str
+# Schema phản hồi cho lookup log, đã bỏ user_ip và user
+class LookupLogResponse(BaseModel):
+    id: int
     plate_number: str
     lookup_time: datetime
-    user_ip: str
-    user: Optional[dict] = None
 
     class Config:
         orm_mode = True
 
 # Schema phản hồi cho user
 class UserResponse(BaseModel):
-    id: str
+    id: int
     username: str
     role: str
 
@@ -41,13 +39,13 @@ def admin_required(current_user: User = Depends(get_current_user)):
         )
     return current_user
 
-@router.get("/lookup_logs", response_model=List[LookupLogWithUser])
+@router.get("/lookup_logs", response_model=List[LookupLogResponse])
 def get_admin_lookup_logs(
     limit: int = 100,
     db: Session = Depends(get_db),
     current_user: User = Depends(admin_required),
 ):
-    # 1. Truy vấn log trước
+    # Truy vấn logs mới nhất, giới hạn theo limit
     logs = (
         db.query(LookupLog)
         .order_by(LookupLog.lookup_time.desc())
@@ -55,37 +53,7 @@ def get_admin_lookup_logs(
         .all()
     )
 
-    # 2. Lấy danh sách IP xuất hiện trong logs
-    user_ips = list({log.user_ip for log in logs})
-
-    # 3. Truy vấn tất cả user có username trùng user_ip
-    users = (
-        db.query(User)
-        .filter(User.username.in_(user_ips))
-        .all()
-    )
-    user_dict = {user.username: user for user in users}
-
-    # 4. Kết hợp dữ liệu log và user (nếu có)
-    results = []
-    for log in logs:
-        user = user_dict.get(log.user_ip)
-        user_data = None
-        if user:
-            user_data = {
-                "id": user.id,
-                "username": user.username,
-                "role": user.role,
-            }
-        results.append({
-            "id": log.id,
-            "plate_number": log.plate_number,
-            "lookup_time": log.lookup_time,
-            "user_ip": log.user_ip,
-            "user": user_data,
-        })
-
-    return results
+    return logs
 
 
 @router.get("/users", response_model=List[UserResponse])
@@ -102,8 +70,7 @@ def get_lookup_stats(
     db: Session = Depends(get_db),
     current_user: User = Depends(admin_required),
 ):
-    # Giả sử tính theo ngày, group by ngày và count biển số
-    from sqlalchemy import func, cast, Date
+    from sqlalchemy import cast, Date
 
     results = (
         db.query(
@@ -122,13 +89,29 @@ def get_lookup_count_today(
     db: Session = Depends(get_db),
     current_user: User = Depends(admin_required),
 ):
-    today_start = datetime.combine(date.today(), datetime.min.time())  # 00:00:00 hôm nay
-    today_end = datetime.combine(date.today(), datetime.max.time())    # 23:59:59.999999 hôm nay
+    tz = pytz.timezone("Asia/Ho_Chi_Minh")
+    now = datetime.now(tz)
+    today_start = tz.localize(datetime(now.year, now.month, now.day)) + timedelta(days=1)
+    tomorrow_start = today_start + timedelta(days=1)
 
     count = (
         db.query(func.count(LookupLog.id))
-        .filter(and_(LookupLog.lookup_time >= today_start, LookupLog.lookup_time <= today_end))
+        .filter(LookupLog.lookup_time >= today_start, LookupLog.lookup_time < tomorrow_start)
         .scalar()
     )
 
     return {"count_today": count}
+
+@router.delete("/lookup_logs/{log_id}", status_code=204)
+def delete_lookup_log(
+    log_id: int = Path(..., description="ID của lookup log cần xóa"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(admin_required),
+):
+    log = db.query(LookupLog).filter(LookupLog.id == log_id).first()
+    if not log:
+        raise HTTPException(status_code=404, detail="Lookup log không tồn tại")
+    
+    db.delete(log)
+    db.commit()
+    return

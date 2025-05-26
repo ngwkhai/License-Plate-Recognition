@@ -9,8 +9,6 @@ class Plate(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     plate_number = Column(Text, nullable=False, index=True)
     timestamp = Column(DateTime, nullable=False)
-    image_path = Column(Text)
-    processed_path = Column(Text)
 
 
 class LookupLog(Base):
