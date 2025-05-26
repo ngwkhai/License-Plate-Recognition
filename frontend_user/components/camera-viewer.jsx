@@ -1,15 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Camera, RefreshCw, CameraIcon, X } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
-import { RecognitionResult } from "@/components/recognition-result"
-import { useLocalStorage } from "@/hooks/use-local-storage"
 
 export function CameraViewer() {
   const [isStreaming, setIsStreaming] = useState(false)
@@ -21,20 +13,17 @@ export function CameraViewer() {
   const canvasRef = useRef(null)
   const streamRef = useRef(null)
   const { toast } = useToast()
-  const [history, setHistory] = useLocalStorage("license-plate-history", [])
+  const [history, setHistory] = useState(
+    () => JSON.parse(localStorage.getItem("license-plate-history") || "[]")
+  )
 
-  // Get available camera devices
   useEffect(() => {
     async function getDevices() {
       try {
-        // Request permission first to ensure we get devices
         await navigator.mediaDevices.getUserMedia({ video: true })
-
-        const devices = await navigator.mediaDevices.enumerateDevices()
-        const videoDevices = devices.filter((device) => device.kind === "videoinput")
-
+        const allDevices = await navigator.mediaDevices.enumerateDevices()
+        const videoDevices = allDevices.filter((d) => d.kind === "videoinput")
         setDevices(videoDevices)
-
         if (videoDevices.length > 0) {
           setSelectedDeviceId(videoDevices[0].deviceId)
         }
@@ -42,7 +31,7 @@ export function CameraViewer() {
         console.error("Error accessing camera:", error)
         toast({
           title: "Không thể truy cập camera",
-          description: "Vui lòng đảm bảo bạn đã cấp quyền truy cập camera cho trang web này.",
+          description: "Vui lòng cấp quyền truy cập camera cho trình duyệt.",
           variant: "destructive",
         })
       }
@@ -50,31 +39,34 @@ export function CameraViewer() {
 
     getDevices()
 
-    // Cleanup function
     return () => {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop())
+        streamRef.current = null
       }
     }
   }, [toast])
 
+  useEffect(() => {
+    // Sync history to localStorage when history changes
+    localStorage.setItem("license-plate-history", JSON.stringify(history))
+  }, [history])
+
   const startStream = async () => {
     if (!selectedDeviceId) {
       toast({
-        title: "Không có camera nào được chọn",
-        description: "Vui lòng chọn một camera để bắt đầu stream.",
+        title: "Chưa chọn camera",
+        description: "Vui lòng chọn một camera trước khi bắt đầu.",
         variant: "destructive",
       })
       return
     }
 
     try {
-      // Stop any existing stream
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop())
       }
 
-      // Start a new stream
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           deviceId: { exact: selectedDeviceId },
@@ -93,10 +85,10 @@ export function CameraViewer() {
       setIsStreaming(true)
       setResult(null)
     } catch (error) {
-      console.error("Error starting camera stream:", error)
+      console.error("Error starting stream:", error)
       toast({
-        title: "Lỗi khi bắt đầu stream",
-        description: "Không thể bắt đầu stream camera. Vui lòng thử lại sau.",
+        title: "Không thể bắt đầu stream",
+        description: "Vui lòng thử lại.",
         variant: "destructive",
       })
     }
@@ -115,15 +107,11 @@ export function CameraViewer() {
     setIsStreaming(false)
   }
 
-  const resetResult = () => {
-    setResult(null)
-  }
-
   const captureFrame = () => {
     if (!videoRef.current || !canvasRef.current || !isStreaming) {
       toast({
-        title: "Không thể chụp khung hình",
-        description: "Vui lòng đảm bảo camera đang hoạt động.",
+        title: "Không thể chụp ảnh",
+        description: "Camera chưa hoạt động hoặc chưa có khung hình.",
         variant: "destructive",
       })
       return
@@ -131,179 +119,128 @@ export function CameraViewer() {
 
     const video = videoRef.current
     const canvas = canvasRef.current
-    const context = canvas.getContext("2d")
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
 
-    if (!context) return
-
-    // Set canvas dimensions to match video
     canvas.width = video.videoWidth
     canvas.height = video.videoHeight
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
 
-    // Draw the current video frame to the canvas
-    context.drawImage(video, 0, 0, canvas.width, canvas.height)
+    canvas.toBlob(async (blob) => {
+      if (!blob) return
 
-    // Convert canvas to blob
-    canvas.toBlob(
-      async (blob) => {
-        if (!blob) return
+      setIsLoading(true)
 
-        setIsLoading(true)
+      try {
+        const formData = new FormData()
+        formData.append("image", blob)
 
-        try {
-          // In a real application, you would send this blob to your backend
-          const formData = new FormData();
-          formData.append('image', blob);
-          const response = await fetch('http://localhost:8000/upload', { method: 'POST', body: formData });
-          const data = await response.json();
+        const response = await fetch("http://localhost:8000/upload", {
+          method: "POST",
+          body: formData,
+        })
 
-          // Simulate API call
-          await new Promise((resolve) => setTimeout(resolve, 1500))
+        const data = await response.json()
 
-          // Generate a random bounding box
-          const boundingBox = {
-            x: Math.floor(Math.random() * 50) + 25,
-            y: Math.floor(Math.random() * 50) + 25,
-            width: Math.floor(Math.random() * 100) + 100,
-            height: Math.floor(Math.random() * 50) + 30,
-          }
+        if (!data.licensePlates || !data.boundingBoxes) {
+          throw new Error("Dữ liệu trả về không hợp lệ.")
+        }
 
-          // Draw the bounding box on the canvas
-          context.strokeStyle = "#FF0000"
-          context.lineWidth = 3
-          context.strokeRect(boundingBox.x, boundingBox.y, boundingBox.width, boundingBox.height)
+        // Vẽ bounding boxes và label
+        data.boundingBoxes.forEach((box, index) => {
+          const { x, y, width, height } = box
+          ctx.strokeStyle = "#FF0000"
+          ctx.lineWidth = 3
+          ctx.strokeRect(x, y, width, height)
 
-          // Generate a random license plate
-          const licensePlate = `${Math.floor(Math.random() * 90) + 10}A-${Math.floor(Math.random() * 90000) + 10000}`
+          ctx.fillStyle = "#FF0000"
+          ctx.font = "16px Arial"
+          ctx.fillText(data.licensePlates[index] || "", x, y - 5)
+        })
 
-          // Add label above the bounding box
-          context.fillStyle = "#FF0000"
-          context.font = "16px Arial"
-          context.fillText(licensePlate, boundingBox.x, boundingBox.y - 5)
+        const imageData = canvas.toDataURL("image/jpeg")
 
-          // Get image data for storage
-          const imageData = canvas.toDataURL("image/jpeg")
+        const newResult = {
+          id: `result-${Date.now()}`,
+          licensePlates: data.licensePlates,
+          boundingBoxes: data.boundingBoxes,
+          timestamp: new Date().toISOString(),
+          imageData,
+        }
 
-          // Mock result
-          const mockResult = {
-            id: `result-${Date.now()}`,
-            licensePlate: licensePlate,
-            boundingBox: boundingBox,
-            timestamp: new Date().toISOString(),
-            imageData: imageData,
-          }
+        setResult(newResult)
 
-          setResult(mockResult)
-
-          // Add to history - create a new array instead of modifying the existing one
+        data.licensePlates.forEach((plate, plateIndex) => {
           const newHistoryItem = {
-            id: mockResult.id,
-            licensePlate: mockResult.licensePlate,
-            timestamp: mockResult.timestamp,
+            id: `${newResult.id}-plate-${plateIndex}`,
+            licensePlate: plate,
+            timestamp: newResult.timestamp,
             source: "camera",
             imageUrl: imageData,
           }
+          setHistory((prev) => [newHistoryItem, ...prev])
+        })
 
-          setHistory((prevHistory) => [newHistoryItem, ...prevHistory])
-
-          toast({
-            title: "Nhận dạng thành công",
-            description: `Đã nhận dạng biển số: ${mockResult.licensePlate}`,
-          })
-        } catch (error) {
-          toast({
-            title: "Lỗi khi nhận dạng",
-            description: "Đã xảy ra lỗi khi nhận dạng biển số. Vui lòng thử lại sau.",
-            variant: "destructive",
-          })
-        } finally {
-          setIsLoading(false)
-        }
-      },
-      "image/jpeg",
-      0.95,
-    )
+        toast({
+          title: "Nhận dạng thành công",
+          description: `Phát hiện ${data.licensePlates.length} biển số.`,
+        })
+      } catch (err) {
+        console.error("Recognition error:", err)
+        toast({
+          title: "Lỗi nhận dạng",
+          description: "Không thể nhận dạng ảnh. Vui lòng thử lại.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }, "image/jpeg")
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardContent className="p-6 space-y-4">
-          <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-            <div className="w-full md:w-1/3">
-              <Label htmlFor="camera-select">Chọn camera</Label>
-              <Select value={selectedDeviceId} onValueChange={setSelectedDeviceId} disabled={isStreaming}>
-                <SelectTrigger id="camera-select" className="w-full">
-                  <SelectValue placeholder="Chọn camera" />
-                </SelectTrigger>
-                <SelectContent>
-                  {devices.map((device) => (
-                    <SelectItem key={device.deviceId} value={device.deviceId}>
-                      {device.label || `Camera ${devices.indexOf(device) + 1}`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+    <div className="space-y-4">
+      <div className="flex gap-2 items-center">
+        <select
+          value={selectedDeviceId}
+          onChange={(e) => setSelectedDeviceId(e.target.value)}
+          className="border p-2 rounded"
+        >
+          {devices.map((device) => (
+            <option key={device.deviceId} value={device.deviceId}>
+              {device.label || "Không tên"}
+            </option>
+          ))}
+        </select>
 
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="stream-toggle"
-                checked={isStreaming}
-                onCheckedChange={(checked) => {
-                  if (checked) {
-                    startStream()
-                  } else {
-                    stopStream()
-                  }
-                }}
-              />
-              <Label htmlFor="stream-toggle">{isStreaming ? "Tắt camera" : "Bật camera"}</Label>
-            </div>
-          </div>
+        <button onClick={startStream} className="bg-green-600 text-white px-4 py-2 rounded">
+          Bắt đầu
+        </button>
+        <button onClick={stopStream} className="bg-red-600 text-white px-4 py-2 rounded">
+          Dừng
+        </button>
+        <button
+          onClick={captureFrame}
+          disabled={isLoading}
+          className="bg-blue-600 text-white px-4 py-2 rounded"
+        >
+          {isLoading ? "Đang xử lý..." : "Chụp ảnh"}
+        </button>
+      </div>
 
-          <div className="relative bg-black rounded-lg overflow-hidden">
-            <video ref={videoRef} className={`w-full ${isStreaming ? "block" : "hidden"}`} autoPlay playsInline muted />
+      <video ref={videoRef} className="w-full rounded border" autoPlay muted />
+      <canvas ref={canvasRef} className="hidden" />
 
-            {!isStreaming && (
-              <div className="flex flex-col items-center justify-center h-64 text-white">
-                <Camera className="h-12 w-12 mb-4" />
-                <p>Camera đang tắt</p>
-              </div>
-            )}
-
-            <canvas ref={canvasRef} className="hidden" />
-          </div>
-
-          {isStreaming && (
-            <div className="flex justify-center">
-              <Button onClick={captureFrame} disabled={isLoading} className="w-full md:w-auto">
-                {isLoading ? (
-                  <>
-                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                    Đang xử lý...
-                  </>
-                ) : (
-                  <>
-                    <CameraIcon className="mr-2 h-4 w-4" />
-                    Chụp và nhận dạng
-                  </>
-                )}
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {result && (
-        <div className="mt-8 space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">Kết quả nhận dạng</h2>
-            <Button variant="outline" size="sm" onClick={resetResult}>
-              <X className="h-4 w-4 mr-2" />
-              Thoát
-            </Button>
-          </div>
-          <RecognitionResult result={result} showImage />
+      {result?.licensePlates?.length > 0 && (
+        <div className="mt-4">
+          <h4 className="font-bold mb-2">Biển số nhận dạng:</h4>
+          <ul className="bg-gray-100 p-3 rounded space-y-1 text-sm">
+            {result.licensePlates.map((plate, index) => (
+              <li key={index} className="bg-white p-1 rounded border">
+                {plate}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>
