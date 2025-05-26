@@ -1,8 +1,8 @@
 # Dựa trên bản Python nhẹ
 FROM python:3.10-slim
 
-WORKDIR /app
-
+# Tạo thư mục làm việc
+WORKDIR /backend_ai
 
 # Cài đặt các thư viện hệ thống cần thiết cho OpenCV và PyTorch
 RUN apt-get update && apt-get install -y \
@@ -21,10 +21,6 @@ RUN apt-get update && apt-get install -y \
     libswscale-dev \
     && rm -rf /var/lib/apt/lists/*
 
-
-
-# Tạo thư mục làm việc
-WORKDIR /backend_ai
 
 # Copy file requirements.txt và cài đặt gói Python
 COPY first.txt .

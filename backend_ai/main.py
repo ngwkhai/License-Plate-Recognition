@@ -32,7 +32,7 @@ app.add_middleware(
 
 # === KHỐI 3: Endpoint REST ===
 @app.post("/upload")
-async def upload_image(file: UploadFile = File(...)):
+async def upload_image(files: List[UploadFile] = File(...)):
     results = []
     for file in files:
         contents = await file.read()
