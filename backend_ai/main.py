@@ -11,6 +11,7 @@ from datetime import datetime
 from typing import List 
 import function.utils_rotate as utils_rotate
 import function.helper as helper
+import requests
 
 
 MODEL_PATH_DETECTOR = "model/LP_detector.pt"
@@ -80,6 +81,15 @@ async def upload_image(files: List[UploadFile] = File(...)):
             "imageBase64": img_base64,
             "fileType": file.content_type
         })
+
+        for i in list_read_plates:
+            data = {
+                "plate_number": i,
+                "lookup_time": datetime.utcnow().isoformat()
+            }
+            response = requests.post("http://localhost:8001/log_lookup", json=data)
+            print(response.status_code, response.json())
+
 
     return JSONResponse(content=results)
 

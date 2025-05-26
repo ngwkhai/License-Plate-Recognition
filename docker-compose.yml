@@ -45,28 +45,28 @@ services:
     volumes:
       - ./backend_db:/app
 
-  # # AI backend service
-  # backend_ai:
-  #   build:
-  #     context: ./backend_ai
-  #   container_name: backend_ai
-  #   ports:
-  #     - "8000:8000"
-  #   volumes:
-  #     - ./backend_ai:/backend_ai
-  #   working_dir: /backend_ai
-  #   restart: always
+  # AI backend service
+  backend_ai:
+    build:
+      context: ./backend_ai
+    container_name: backend_ai
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend_ai:/backend_ai
+    working_dir: /backend_ai
+    restart: always
 
-  # # Frontend user service
-  # frontend_user:
-  #   build:
-  #     context: ./frontend_user
-  #   container_name: frontend_user
-  #   ports:
-  #     - "3000:3000"
-  #   depends_on:
-  #     - backend_ai
-  #   restart: always
+  # Frontend user service
+  frontend_user:
+    build:
+      context: ./frontend_user
+    container_name: frontend_user
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend_ai
+    restart: always
 
 
   frontend_admin:
