@@ -57,7 +57,8 @@ export default function Dashboard({ onLogout }) {
 
   const handleLogout = () => {
     localStorage.removeItem("token");
-    if (onLogout) onLogout();
+    window.location.assign("http://localhost:3000",)
+
   };
 
   if (!stats?.length) return <div>Đang tải dữ liệu...</div>;
