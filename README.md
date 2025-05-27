@@ -1,18 +1,18 @@
 # Hệ thống nhận diện biển số xe và hỗ trợ tra cứu phạt nguội
 
-## Overview
+## Mục lục
 
-- [Thành viên nhóm](#thành-viên-nhóm)
-- [Mô tả dự án](#mô-tả-dự-án)
-  - [Tổng quan mục tiêu](#tổng-quan-mục-tiêu)
-  - [Nhiệm vụ chính](#nhiệm-vụ-chính)
-  - [Trường hợp sử dụng tiêu biểu](#trường-hợp-sử-dụng-tiêu-biểu)
-- [Kiến trúc hệ thống](#kiến-trúc-hệ-thống)
-  - [Các thành phần chính](#các-thành-phần-chính)
-  - [Giao tiếp hệ thống](#giao-tiếp-hệ-thống)
-- [Liên kết Docker Hub](#liên-kết-docker-hub)
-- [Hướng dẫn chạy Docker Compose](#hướng-dẫn-chạy-docker-compose)
-- [Hướng dẫn sử dụng](#hướng-dẫn-sử-dụng)
+1. [Thành viên nhóm](#thành-viên-nhóm)  
+2. [Mô tả dự án](#mô-tả-dự-án)  
+   - [Tổng quan mục tiêu](#tổng-quan-mục-tiêu)  
+   - [Nhiệm vụ chính](#nhiệm-vụ-chính)  
+   - [Trường hợp sử dụng tiêu biểu](#trường-hợp-sử-dụng-tiêu-biểu)  
+3. [Kiến trúc hệ thống](#kiến-trúc-hệ-thống)  
+   - [Các thành phần chính](#các-thành-phần-chính)  
+   - [Giao tiếp hệ thống](#giao-tiếp-hệ-thống)  
+4. [Liên kết Docker Hub](#liên-kết-docker-hub)  
+5. [Hướng dẫn chạy Docker Compose](#hướng-dẫn-chạy-docker-compose)  
+
 
 ---
 
@@ -21,8 +21,8 @@
 - 23020384 – Nguyễn Đình Khải  
 - 23020388 – Nguyễn Thế Khôi  
 - 23020414 – Võ Duy Quang  
-- 223020376 – Nguyễn Đức Huy  
-- 230200344 – Ngô Quang Dũng
+- 23020376 – Nguyễn Đức Huy  
+- 230200344 – Ngô Quang Dũng  
 
 ---
 
@@ -34,65 +34,77 @@ Dự án phát triển hệ thống nhận diện biển số xe thời gian th�
 
 Hệ thống được thiết kế để:
 
-- Nhận dạng biển số từ ảnh, video, hoặc luồng camera trực tiếp.
-- Xử lý đa dạng nguồn dữ liệu với hiệu suất thời gian thực.
-- Lưu trữ thông tin biển số và hình ảnh đã xử lý.
-- Cung cấp giao diện cho người dùng cuối và quản trị viên.
-- Tích hợp tra cứu phạt nguội thông qua trang chính thức csgt.vn.
-- Hệ thống được triển khai theo kiến trúc microservices với các thành phần riêng biệt, sử dụng Docker để đảm bảo khả năng mở rộng, bảo trì dễ dàng và hiệu suất xử lý cao trong môi trường thực tế.
+- Nhận diện biển số xe từ ảnh tĩnh, video có sẵn hoặc luồng camera trực tiếp (real-time).
+- Xử lý dữ liệu theo thời gian thực, đảm bảo tốc độ và độ chính xác cao.  
+- Lưu trữ thông tin biển số xe, hình ảnh gốc và ảnh vùng biển số đã xử lý cùng tọa độ biển số trên ảnh.  
+- Hiển thị luồng camera thời gian thực kèm kết quả nhận diện ngay lập tức. 
+- Cung cấp hai giao diện web dành cho người dân và quản trị viên.  
+- Tích hợp API tra cứu phạt nguội từ trang chính thức **[CSGT.vn](https://www.csgt.vn)**
+- Thiết kế theo kiến trúc microservices, dễ dàng mở rộng và bảo trì.  
+- Triển khai bằng Docker, thuận tiện trong nhiều môi trường thực tế.  
 
 ### Nhiệm vụ chính
 
-- Phát triển mô hình AI sử dụng YOLOv5 và OCR để nhận diện biển số xe.
-- Xử lý dữ liệu đầu vào từ ảnh, video và camera trực tiếp.
-- Lưu trữ hiệu quả các thông tin nhận dạng trong cơ sở dữ liệu.
-- Xây dựng giao diện người dùng và quản trị rõ ràng, dễ sử dụng.
-- Đảm bảo hệ thống hoạt động ổn định với Docker và microservices.
+- Phát triển mô hình AI (YOLOv5 + OCR) nhận diện biển số xe từ nhiều nguồn dữ liệu.  
+- Xử lý, lưu trữ và quản lý dữ liệu nhận diện biển số cùng lịch sử tra cứu.  
+- Xây dựng API RESTful phục vụ giao tiếp giữa các thành phần frontend và backend.  
+- Phát triển giao diện quản trị giúp giám sát, thống kê và xuất báo cáo.  
+- Đảm bảo hệ thống hoạt động ổn định, hiệu quả với khả năng mở rộng cao.  
 
 ### Trường hợp sử dụng tiêu biểu
 
-**Người dân / Người dùng cuối:**
-- Tải lên ảnh/video hoặc sử dụng camera để hệ thống nhận diện biển số xe.
-- Nhận kết quả nhanh chóng và tra cứu phạt nguội.
-- Tra cứu thông tin vi phạm giao thông (phạt nguội) dựa trên biển số đã nhận dạng, thông qua cơ chế hỗ trợ bán tự động.
+#### Đối với người dân
 
-**Quản trị viên / Kỹ thuật viên:**
-- Giám sát hoạt động của hệ thống.
-- Truy cập dữ liệu nhận diện, thống kê theo thời gian/địa điểm.
-- Quản lý xe đặc biệt, xuất báo cáo dữ liệu.
+1. **Tra cứu vi phạm giao thông qua biển số**  
+   Người dân có thể sử dụng hệ thống để tải ảnh, video hoặc truyền luồng camera nhằm nhận diện biển số xe. Sau khi nhận diện, hệ thống cho phép sao chép nhanh biển số và dẫn liên kết tới trang tra cứu phạt nguội chính thức (csgt.vn).
 
-**Backend AI:**
-- Nhận dữ liệu từ frontend, xử lý phát hiện và nhận dạng biển số xe.
-- Đảm bảo độ chính xác và tốc độ xử lý đáp ứng thời gian thực.
+2. **Giám sát phương tiện ra vào khu vực**  
+   Với khả năng nhận diện biển số theo thời gian thực từ camera, hệ thống giúp người dùng theo dõi các phương tiện ra vào khu dân cư, nhà riêng hoặc bãi đỗ xe. Danh sách các biển số đã nhận dạng được lưu lại và có thể kiểm tra bất cứ lúc nào.
 
-**Backend DB:**
-- Lưu trữ dữ liệu nhận dạng, lịch sử tra cứu và các thông tin liên quan.
-- Cung cấp API cho frontend và backend AI để truy xuất và cập nhật dữ liệu
+3. **Lưu lịch sử tra cứu**  
+   Hệ thống tự động ghi lại các biển số đã nhận diện trong phiên làm việc hoặc trong ngày. Người dùng có thể xem lại lịch sử để phục vụ việc đối chiếu hoặc tra cứu sau này.
+
+
+
+#### Đối với quản trị viên / kỹ thuật viên
+
+1. **Giám sát hoạt động nhận diện theo thời gian thực**  
+   Quản trị viên có thể theo dõi trạng thái hệ thống và danh sách biển số xe được nhận diện tức thời từ camera, đảm bảo hệ thống hoạt động ổn định.
+
+2. **Thống kê, phân tích dữ liệu biển số**  
+   Giao diện quản trị hiển thị số lượng biển số đã nhận diện theo các mốc thời gian (ngày, tuần, tháng), kết hợp biểu đồ trực quan hỗ trợ việc theo dõi xu hướng và phân tích.
+
+3. **Tìm kiếm và quản lý lịch sử nhận diện**  
+   Hệ thống cho phép lọc và tìm kiếm biển số đã nhận dạng theo khoảng thời gian tùy chọn. Quản trị viên cũng có thể xóa các bản ghi không cần thiết để đảm bảo cơ sở dữ liệu được tối ưu.
 
 ---
 
 ## Kiến trúc hệ thống
 
-Hệ thống nhận diện biển số xe thời gian thực được xây dựng theo kiến trúc **microservices**, mỗi thành phần được đóng gói trong Docker container, giao tiếp qua API và message broker, giúp dễ dàng mở rộng và bảo trì.
+Hệ thống xây dựng theo kiến trúc **microservices** giúp tách biệt các chức năng, dễ bảo trì và mở rộng. Mỗi thành phần được đóng gói trong Docker container để triển khai đồng nhất trên nhiều môi trường.
 
 ### Các thành phần chính
 
-- **Frontend User**:  
-  Giao diện cho người dân hoặc thiết bị gửi ảnh, video, luồng camera trực tiếp. Hiển thị kết quả nhận dạng và hỗ trợ tra cứu phạt nguội qua trang csgt.vn. Lưu trữ lịch sử tra cứu cũng như gửi hình ảnh/video cho hệ thống nhận diện.
+- **Frontend User**  
+  Cho phép tải ảnh, video hoặc truyền trực tiếp luồng camera để nhận diện biển số. Hiển thị kết quả nhận diện biển số xe theo thời gian thực, hỗ trợ sao chép nhanh biển số để tra cứu phạt nguội, đồng thời lưu lại lịch sử tra cứu tiện lợi.  
+  Giao diện bao gồm nút chuyển sang chế độ quản trị (Admin), yêu cầu người dùng đăng nhập để truy cập các chức năng quản trị.
 
-- **Backend AI**:  
-  Xử lý nhận diện biển số bằng mô hình YOLOv5 và OCR. Trả kết quả nhận dạng và gửi dữ liệu về Backend DB.
+- **Backend AI**  
+  Xử lý nhận diện biển số xe bằng mô hình YOLOv5 và OCR, đảm bảo tốc độ và độ chính xác cao trong thời gian thực. Trả kết quả về frontend và lưu vào backend DB.
 
-- **Backend DB**:  
-  Lưu trữ và quản lý dữ liệu biển số, lịch sử tra cứu, người dùng. Cung cấp API cho frontend và backend.
+- **Backend DB**  
+  Lưu trữ dữ liệu biển số, ảnh, lịch sử tra cứu và quản lý người dùng. Cung cấp API RESTful cho các thành phần truy cập dữ liệu.
 
-- **Frontend Admin**:  
-  Giao diện quản trị giúp giám sát, lọc dữ liệu, quản lý xe đặc biệt, cảnh báo và xuất báo cáo.
+- **Frontend Admin**  
+  Giao diện quản trị hỗ trợ giám sát hoạt động hệ thống, tìm kiếm, thống kê và xuất báo cáo. Tìm kiếm lịch sử nhận diện biển số xe và cho phép xóa các bản ghi theo thời gian cụ thể.
+  Hệ thống bao gồm trang đăng nhập bảo mật, yêu cầu nhập tài khoản và mật khẩu hợp lệ trước khi truy cập các tính năng quản trị.
 
 ### Giao tiếp hệ thống
 
-- REST API và WebSocket cho giao tiếp thời gian thực.
-- Kafka hoặc Redis đóng vai trò message broker giữa các backend, hỗ trợ xử lý bất đồng bộ.
+- Sử dụng **API RESTful** làm kênh giao tiếp chính giữa frontend và backend.  
+- Dùng **WebSocket** để cập nhật dữ liệu nhận diện theo thời gian thực tới frontend.  
+- Mỗi dịch vụ chạy trong **Docker container** đảm bảo môi trường vận hành đồng nhất, dễ dàng triển khai và mở rộng.  
+- **Giao diện người dùng (User)** có thêm nút chuyển sang giao diện **Admin**, khi đó yêu cầu đăng nhập với tài khoản và mật khẩu được cấp sẵn mới có thể truy cập được khu vực quản trị. 
 
 ---
 
@@ -100,8 +112,4 @@ Hệ thống nhận diện biển số xe thời gian thực được xây dựn
 
 
 
----
-
 ## Hướng dẫn chạy Docker Compose
-
-
