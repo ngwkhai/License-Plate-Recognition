@@ -103,6 +103,8 @@ export function FileUploader() {
       setProgress(100)
 
       const processedResults = data.map((result, index) => {
+        let resultItem
+
         if (result.imageBase64) {
           const byteCharacters = atob(result.imageBase64)
           const byteNumbers = new Array(byteCharacters.length)
@@ -113,7 +115,7 @@ export function FileUploader() {
           const blob = new Blob([byteArray], { type: result.fileType })
           const imageUrl = URL.createObjectURL(blob)
 
-          const resultItem = {
+          resultItem = {
             id: `result-${Date.now()}-${index}`,
             filename: result.filename,
             licensePlates: result.licensePlates,
@@ -121,42 +123,18 @@ export function FileUploader() {
             imageUrl,
             fileType: result.fileType,
           }
-          const historyItem = {
-            id: resultItem.id,
-            licensePlates: resultItem.licensePlates,
-            timestamp: resultItem.timestamp,
-            source: "upload",
-            filename: resultItem.filename,
-            imageUrl: resultItem.imageUrl,
-            fileType: resultItem.fileType,
-          }
-          setHistory((prevHistory) => [historyItem, ...prevHistory])
-
-          return resultItem
-          
         } else if (result.videoPath) {
-          const resultItem = {
+          const videoUrl = `http://localhost:8000/videos/${result.videoPath}`
+          resultItem = {
             id: `result-${Date.now()}-${index}`,
             filename: result.filename,
             licensePlates: result.licensePlates || [],
             timestamp: result.timestamp,
-            imageUrl: `http://localhost:8000/videos/${result.videoPath}`,
+            imageUrl: videoUrl,
             fileType: result.fileType,
           }
-          const historyItem = {
-            id: resultItem.id,
-            licensePlates: resultItem.licensePlates,
-            timestamp: resultItem.timestamp,
-            source: "upload",
-            filename: resultItem.filename,
-            imageUrl: resultItem.imageUrl,
-            fileType: resultItem.fileType,
-          }
-          setHistory((prevHistory) => [historyItem, ...prevHistory])
-
-          return resultItem
         } else {
-          return {
+          resultItem = {
             id: `result-${Date.now()}-${index}`,
             filename: result.filename,
             licensePlates: [],
@@ -165,6 +143,19 @@ export function FileUploader() {
             fileType: result.fileType,
           }
         }
+
+        const historyItem = {
+          id: resultItem.id,
+          licensePlates: resultItem.licensePlates,
+          timestamp: resultItem.timestamp,
+          source: "upload",
+          filename: resultItem.filename,
+          imageUrl: resultItem.imageUrl,
+          fileType: resultItem.fileType,
+        }
+        setHistory((prevHistory) => [historyItem, ...prevHistory])
+
+        return resultItem
       })
 
       setResults(processedResults)

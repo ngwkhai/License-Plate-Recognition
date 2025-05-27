@@ -6,6 +6,7 @@ import json
 from fastapi import FastAPI, File, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 import numpy as np
 from datetime import datetime
 from typing import List 
@@ -15,6 +16,7 @@ import requests
 import tempfile
 import os
 import time
+import uuid
 
 MODEL_PATH_DETECTOR = "model/LP_detector.pt"
 MODEL_PATH_OCR = "model/LP_ocr.pt"
@@ -30,8 +32,11 @@ detector.conf = CONF_THRESHOLD
 yolo_LP_detect.conf = CONF_THRESHOLD
 
 VIDEO_EXTENSIONS = (".mp4", ".avi", ".mov", ".mkv")
+VIDEO_SAVE_DIR = "videos"
+os.makedirs(VIDEO_SAVE_DIR, exist_ok=True)
 
 app = FastAPI()
+app.mount("/videos", StaticFiles(directory=VIDEO_SAVE_DIR), name="videos")
 clients = set()
 
 app.add_middleware(
@@ -41,14 +46,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# === Hàm xử lý video ===
 def process_video(file_path: str) -> dict:
     cap = cv2.VideoCapture(file_path)
     fps = cap.get(cv2.CAP_PROP_FPS)
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-    output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
+    filename = f"{uuid.uuid4().hex}.mp4"
+    output_path = os.path.join(VIDEO_SAVE_DIR, filename)
     out = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height))
 
     frame_skip = int(fps // 2) if fps > 2 else 1
@@ -85,8 +90,8 @@ def process_video(file_path: str) -> dict:
     out.release()
 
     return {
-        "processed_path": output_path,
-        "license_plates": list(all_plates)
+        "video_path": filename,
+        "license_plates": list(set(all_plates))
     }
 
 # === KHỐI 3: Endpoint REST ===
@@ -95,7 +100,7 @@ async def upload_image(files: List[UploadFile] = File(...)):
     results = []
     for file in files:
         ext = os.path.splitext(file.filename)[-1].lower()
-        
+
         if ext in VIDEO_EXTENSIONS:
             tmp = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
             contents = await file.read()
@@ -103,18 +108,22 @@ async def upload_image(files: List[UploadFile] = File(...)):
             tmp.close()
 
             video_result = process_video(tmp.name)
-            processed_path = video_result["processed_path"]
+            video_filename = video_result["video_path"]
             plates_found = video_result["license_plates"]
 
-            with open(processed_path, "rb") as f:
-                video_bytes = f.read()
-                video_base64 = base64.b64encode(video_bytes).decode("utf-8")
+            for i in plates_found:
+                data = {
+                    "plate_number": i,
+                    "lookup_time": datetime.utcnow().isoformat()
+                }
+                response = requests.post("http://backend_db:8001/log_lookup", json=data)
+                print(response.status_code, response.json())
 
             results.append({
                 "filename": file.filename,
                 "licensePlates": plates_found,
                 "timestamp": datetime.utcnow().isoformat(),
-                "videoBase64": video_base64,
+                "videoPath": video_filename,
                 "fileType": file.content_type
             })
             continue
@@ -173,14 +182,12 @@ async def upload_image(files: List[UploadFile] = File(...)):
             response = requests.post("http://backend_db:8001/log_lookup", json=data)
             print(response.status_code, response.json())
 
-
     return JSONResponse(content=results)
 
 # === Serve video đã xử lý ===
 @app.get("/videos/{filename}")
 def get_video(filename: str):
-    temp_dir = tempfile.gettempdir()
-    path = os.path.join(temp_dir, filename)
+    path = os.path.join(VIDEO_SAVE_DIR, filename)
     if os.path.exists(path):
         return FileResponse(path, media_type="video/mp4")
     return JSONResponse(status_code=404, content={"error": "Video not found"})
