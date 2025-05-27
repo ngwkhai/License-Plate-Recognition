@@ -64,6 +64,8 @@ services:
     container_name: frontend_user
     ports:
       - "3000:3000"
+    volumes:
+      - ./frontend_user:/frontend_user
     depends_on:
       - backend_ai
     restart: always
@@ -76,7 +78,7 @@ services:
       ports:
         - "5174:5174"  
       volumes:
-        - ./frontend_admin:/app
+        - ./frontend_admin:/frontend_admin
       depends_on:
         - backend-db
       restart: always

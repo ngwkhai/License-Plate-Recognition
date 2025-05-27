@@ -39,7 +39,6 @@ export function FileUploader() {
     }
 
     setFiles(validFiles)
-
     const newPreviews = validFiles.map((file) => URL.createObjectURL(file))
     setPreviews(newPreviews)
     setResults([])
@@ -48,12 +47,9 @@ export function FileUploader() {
   const removeFile = (index) => {
     const newFiles = [...files]
     const newPreviews = [...previews]
-
     URL.revokeObjectURL(newPreviews[index])
-
     newFiles.splice(index, 1)
     newPreviews.splice(index, 1)
-
     setFiles(newFiles)
     setPreviews(newPreviews)
   }
@@ -81,9 +77,10 @@ export function FileUploader() {
 
     setIsLoading(true)
     setProgress(0)
+    let interval
 
     try {
-      const interval = setInterval(() => {
+      interval = setInterval(() => {
         setProgress((prev) => {
           if (prev >= 95) {
             clearInterval(interval)
@@ -106,44 +103,51 @@ export function FileUploader() {
       setProgress(100)
 
       const processedResults = data.map((result, index) => {
-        const byteCharacters = atob(result.imageBase64)
-        const byteNumbers = new Array(byteCharacters.length)
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i)
+        if (result.imageBase64) {
+          const byteCharacters = atob(result.imageBase64)
+          const byteNumbers = new Array(byteCharacters.length)
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i)
+          }
+          const byteArray = new Uint8Array(byteNumbers)
+          const blob = new Blob([byteArray], { type: result.fileType })
+          const imageUrl = URL.createObjectURL(blob)
+
+          return {
+            id: `result-${Date.now()}-${index}`,
+            filename: result.filename,
+            licensePlates: result.licensePlates,
+            timestamp: result.timestamp,
+            imageUrl,
+            fileType: result.fileType,
+          }
+        } else if (result.videoPath) {
+          return {
+            id: `result-${Date.now()}-${index}`,
+            filename: result.filename,
+            licensePlates: result.licensePlates || [],
+            timestamp: result.timestamp,
+            imageUrl: `http://localhost:8000/videos/${result.videoPath}`,
+            fileType: result.fileType,
+          }
+        } else {
+          return {
+            id: `result-${Date.now()}-${index}`,
+            filename: result.filename,
+            licensePlates: [],
+            timestamp: result.timestamp,
+            imageUrl: "",
+            fileType: result.fileType,
+          }
         }
-        const byteArray = new Uint8Array(byteNumbers)
-        const blob = new Blob([byteArray], { type: result.fileType })
-        const imageUrl = URL.createObjectURL(blob)
-
-        const resultItem = {
-          id: `result-${Date.now()}-${index}`,
-          filename: result.filename,
-          licensePlates: result.licensePlates,
-          timestamp: result.timestamp,
-          imageUrl,
-          fileType: result.fileType,
-        }
-
-        const historyItem = {
-          id: resultItem.id,
-          licensePlates: resultItem.licensePlates,
-          timestamp: resultItem.timestamp,
-          source: "upload",
-          filename: resultItem.filename,
-          imageUrl: resultItem.imageUrl,
-          fileType: resultItem.fileType,
-        }
-
-        setHistory((prevHistory) => [historyItem, ...prevHistory])
-
-        return resultItem
       })
 
       setResults(processedResults)
+      setHistory((prev) => [...processedResults, ...prev])
 
       toast({
         title: "Tải lên thành công",
-        description: `Đã xử lý ${processedResults.length} ảnh với biển số`,
+        description: `Đã xử lý ${processedResults.length} file`,
       })
     } catch (error) {
       toast({

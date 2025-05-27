@@ -5,14 +5,15 @@ import base64
 import json
 from fastapi import FastAPI, File, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 import numpy as np
 from datetime import datetime
 from typing import List 
 import function.utils_rotate as utils_rotate
 import function.helper as helper
 import requests
-
+import tempfile
+import os
 import time
 
 MODEL_PATH_DETECTOR = "model/LP_detector.pt"
@@ -26,6 +27,9 @@ yolo_LP_detect = torch.hub.load('yolov5', 'custom', path='model/LP_detector_nano
 yolo_license_plate = torch.hub.load('yolov5', 'custom', path='model/LP_ocr_nano_62.pt', force_reload=True, source='local')
 
 detector.conf = CONF_THRESHOLD
+yolo_LP_detect.conf = CONF_THRESHOLD
+
+VIDEO_EXTENSIONS = (".mp4", ".avi", ".mov", ".mkv")
 
 app = FastAPI()
 clients = set()
@@ -37,11 +41,84 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# === Hàm xử lý video ===
+def process_video(file_path: str) -> dict:
+    cap = cv2.VideoCapture(file_path)
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+    output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4").name
+    out = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height))
+
+    frame_skip = int(fps // 2) if fps > 2 else 1
+    frame_index = 0
+    all_plates = set()
+
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        if frame_index % frame_skip == 0:
+            plates = yolo_LP_detect(frame, size=640)
+            list_plates = plates.pandas().xyxy[0].values.tolist()
+
+            for plate in list_plates:
+                x = int(plate[0])
+                y = int(plate[1])
+                w = int(plate[2] - plate[0])
+                h = int(plate[3] - plate[1])
+                crop_img = frame[y:y+h, x:x+w]
+                cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 0, 225), 2)
+                for cc in range(2):
+                    for ct in range(2):
+                        lp = helper.read_plate(yolo_license_plate, utils_rotate.deskew(crop_img, cc, ct))
+                        if lp != "unknown":
+                            all_plates.add(lp)
+                            cv2.putText(frame, lp, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (36, 255, 12), 2)
+                            break
+        out.write(frame)
+        frame_index += 1
+
+    cap.release()
+    out.release()
+
+    return {
+        "processed_path": output_path,
+        "license_plates": list(all_plates)
+    }
+
 # === KHỐI 3: Endpoint REST ===
 @app.post("/upload")
 async def upload_image(files: List[UploadFile] = File(...)):
     results = []
     for file in files:
+        ext = os.path.splitext(file.filename)[-1].lower()
+        
+        if ext in VIDEO_EXTENSIONS:
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
+            contents = await file.read()
+            tmp.write(contents)
+            tmp.close()
+
+            video_result = process_video(tmp.name)
+            processed_path = video_result["processed_path"]
+            plates_found = video_result["license_plates"]
+
+            with open(processed_path, "rb") as f:
+                video_bytes = f.read()
+                video_base64 = base64.b64encode(video_bytes).decode("utf-8")
+
+            results.append({
+                "filename": file.filename,
+                "licensePlates": plates_found,
+                "timestamp": datetime.utcnow().isoformat(),
+                "videoBase64": video_base64,
+                "fileType": file.content_type
+            })
+            continue
+
         contents = await file.read()
         nparr = np.frombuffer(contents, np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
@@ -88,13 +165,22 @@ async def upload_image(files: List[UploadFile] = File(...)):
             "fileType": file.content_type
         })
 
-        for i in list_read_plates:
-            data = {
-                "plate_number": i,
-                "lookup_time": datetime.utcnow().isoformat()
-            }
-            response = requests.post("http://localhost:8001/log_lookup", json=data)
-            print(response.status_code, response.json())
+        # for i in list_read_plates:
+        #     data = {
+        #         "plate_number": i,
+        #         "lookup_time": datetime.utcnow().isoformat()
+        #     }
+        #     response = requests.post("http://localhost:8001/log_lookup", json=data)
+        #     print(response.status_code, response.json())
 
 
     return JSONResponse(content=results)
+
+# === Serve video đã xử lý ===
+@app.get("/videos/{filename}")
+def get_video(filename: str):
+    temp_dir = tempfile.gettempdir()
+    path = os.path.join(temp_dir, filename)
+    if os.path.exists(path):
+        return FileResponse(path, media_type="video/mp4")
+    return JSONResponse(status_code=404, content={"error": "Video not found"})
