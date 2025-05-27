@@ -44,6 +44,7 @@ services:
       - "8001:8001"
     volumes:
       - ./backend_db:/app
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8001
 
   # AI backend service
   backend_ai:

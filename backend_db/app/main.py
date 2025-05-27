@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.admin import router as admin_router
 from app.api.login import router as login_router
+from app.api.saveData import router as save_data_router
 from app.websocket.ws_server import websocket_endpoint
 from app.db.database import Base, engine
 from app.utils.security import get_current_user
@@ -42,6 +43,7 @@ def create_app() -> FastAPI:
     # Đăng ký router cho các nhóm API
     app.include_router(login_router)  # Router đăng nhập, không có prefix (ví dụ: /login)
     app.include_router(admin_router)  # Router admin với prefix /admin
+    app.include_router(save_data_router)
 
     # Đăng ký websocket route
     app.add_api_websocket_route("/ws", websocket_endpoint)
