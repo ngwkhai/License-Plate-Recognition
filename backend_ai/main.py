@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import List 
 import function.utils_rotate as utils_rotate
 import function.helper as helper
-
+import time
 
 MODEL_PATH_DETECTOR = "model/LP_detector.pt"
 MODEL_PATH_OCR = "model/LP_ocr.pt"
@@ -19,6 +19,11 @@ CONF_THRESHOLD = 0.6
 
 detector = torch.hub.load('ultralytics/yolov5', 'custom', path=MODEL_PATH_DETECTOR, force_reload=True)
 ocr_model = torch.hub.load('ultralytics/yolov5', 'custom', path=MODEL_PATH_OCR, force_reload=True)
+
+yolo_LP_detect = torch.hub.load('yolov5', 'custom', path='model/LP_detector_nano_61.pt', force_reload=True, source='local')
+yolo_license_plate = torch.hub.load('yolov5', 'custom', path='model/LP_ocr_nano_62.pt', force_reload=True, source='local')
+
+detector.conf = CONF_THRESHOLD
 
 app = FastAPI()
 clients = set()
@@ -59,8 +64,8 @@ async def upload_image(files: List[UploadFile] = File(...)):
                 crop_img = img[y:y+h, x:x+w]
 
                 cv2.rectangle(img, (x, y), (x+w, y+h), color=(0, 0, 225), thickness=2)
-                for cc in range(0, 2):
-                    for ct in range(0, 2):
+                for cc in range(2):
+                    for ct in range(2):
                         lp = helper.read_plate(ocr_model, utils_rotate.deskew(crop_img, cc, ct))
                         if lp != "unknown":
                             list_read_plates.add(lp)
@@ -82,4 +87,3 @@ async def upload_image(files: List[UploadFile] = File(...)):
         })
 
     return JSONResponse(content=results)
-
