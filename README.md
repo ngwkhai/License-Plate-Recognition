@@ -12,7 +12,7 @@
    - [Giao tiếp hệ thống](#giao-tiếp-hệ-thống)  
 4. [Liên kết Docker Hub](#liên-kết-docker-hub)  
 5. [Hướng dẫn chạy Docker Compose](#hướng-dẫn-chạy-docker-compose)  
-6. [Hướng dẫn sử dụng](#hướng-dẫn-sử-dụng)  
+
 
 ---
 
@@ -34,12 +34,12 @@ Dự án phát triển hệ thống nhận diện biển số xe thời gian th�
 
 Hệ thống được thiết kế để:
 
-- Nhận diện biển số xe từ ảnh tĩnh, video đã ghi và luồng camera trực tiếp (real-time).  
+- Nhận diện biển số xe từ ảnh tĩnh, video có sẵn hoặc luồng camera trực tiếp (real-time).
 - Xử lý dữ liệu theo thời gian thực, đảm bảo tốc độ và độ chính xác cao.  
 - Lưu trữ thông tin biển số xe, hình ảnh gốc và ảnh vùng biển số đã xử lý cùng tọa độ biển số trên ảnh.  
-- Hiển thị camera real-time kèm kết quả nhận diện tức thời.  
+- Hiển thị luồng camera thời gian thực kèm kết quả nhận diện ngay lập tức. 
 - Cung cấp hai giao diện web dành cho người dân và quản trị viên.  
-- Tích hợp API tra cứu phạt nguội từ trang chính thức **[Tra cứu phạt nguội tại csgt.vn](https://www.csgt.vn)**
+- Tích hợp API tra cứu phạt nguội từ trang chính thức **[CSGT.vn](https://www.csgt.vn)**
 - Thiết kế theo kiến trúc microservices, dễ dàng mở rộng và bảo trì.  
 - Triển khai bằng Docker, thuận tiện trong nhiều môi trường thực tế.  
 
@@ -53,34 +53,29 @@ Hệ thống được thiết kế để:
 
 ### Trường hợp sử dụng tiêu biểu
 
-#### Người dùng cuối (Người dân)
+#### Đối với người dân
 
-- Có thể tải ảnh, video hoặc truyền luồng camera để nhận diện biển số xe.  
-- Xem danh sách biển số được nhận dạng trong phiên làm việc hoặc trong ngày.  
-- Hỗ trợ sao chép nhanh biển số để tra cứu phạt nguội và các vi phạm liên quan trên trang CSGT.  
-- Có nút chuyển sang giao diện quản trị viên (Admin), yêu cầu đăng nhập bằng tài khoản và mật khẩu để truy cập.  
+1. **Tra cứu vi phạm giao thông qua biển số**  
+   Người dân có thể sử dụng hệ thống để tải ảnh, video hoặc truyền luồng camera nhằm nhận diện biển số xe. Sau khi nhận diện, hệ thống cho phép sao chép nhanh biển số và dẫn liên kết tới trang tra cứu phạt nguội chính thức (csgt.vn).
 
-#### Quản trị viên / Kỹ thuật viên
+2. **Giám sát phương tiện ra vào khu vực**  
+   Với khả năng nhận diện biển số theo thời gian thực từ camera, hệ thống giúp người dùng theo dõi các phương tiện ra vào khu dân cư, nhà riêng hoặc bãi đỗ xe. Danh sách các biển số đã nhận dạng được lưu lại và có thể kiểm tra bất cứ lúc nào.
 
-- Đăng nhập bằng tài khoản và mật khẩu do hệ thống cấp trước để đảm bảo an toàn và bảo mật.  
-- Giám sát hoạt động hệ thống nhận diện biển số xe theo thời gian thực.  
-- Xem **tổng số biển số xe đã nhận diện**, bao gồm:  
-  - Tổng số biển số xe nhận dạng được trong ngày.  
-  - Biểu đồ thống kê số lượng biển số theo khoảng thời gian tùy chọn (theo ngày, tuần, tháng).
-  - Hỗ trợ lọc và thống kê dữ liệu nhận diện biển số theo các khoảng thời gian linh hoạt: ngày, tuần, tháng hoặc khoảng thời gian tùy chọn.  
-- Cho phép tìm kiếm lịch sử tra cứu biển số xe theo khoảng thời gian và hỗ trợ xóa các bản ghi tra cứu theo kết quả tìm kiếm đó.  
+3. **Lưu lịch sử tra cứu**  
+   Hệ thống tự động ghi lại các biển số đã nhận diện trong phiên làm việc hoặc trong ngày. Người dùng có thể xem lại lịch sử để phục vụ việc đối chiếu hoặc tra cứu sau này.
 
-#### Backend AI
 
-- Tiếp nhận và xử lý dữ liệu đầu vào từ frontend hoặc camera.  
-- Áp dụng mô hình YOLOv5 và OCR để nhận diện nhanh và chính xác.  
-- Trả về kết quả nhận dạng cho frontend và lưu trữ vào backend DB.  
 
-#### Backend DB
+#### Đối với quản trị viên / kỹ thuật viên
 
-- Lưu trữ dữ liệu biển số xe nhận dạng, ảnh gốc, ảnh vùng biển số, tọa độ bounding box, thời gian nhận dạng.  
-- Quản lý lịch sử tra cứu và thông tin người dùng.  
-- Cung cấp API RESTful cho frontend và backend truy xuất, cập nhật dữ liệu hiệu quả.  
+1. **Giám sát hoạt động nhận diện theo thời gian thực**  
+   Quản trị viên có thể theo dõi trạng thái hệ thống và danh sách biển số xe được nhận diện tức thời từ camera, đảm bảo hệ thống hoạt động ổn định.
+
+2. **Thống kê, phân tích dữ liệu biển số**  
+   Giao diện quản trị hiển thị số lượng biển số đã nhận diện theo các mốc thời gian (ngày, tuần, tháng), kết hợp biểu đồ trực quan hỗ trợ việc theo dõi xu hướng và phân tích.
+
+3. **Tìm kiếm và quản lý lịch sử nhận diện**  
+   Hệ thống cho phép lọc và tìm kiếm biển số đã nhận dạng theo khoảng thời gian tùy chọn. Quản trị viên cũng có thể xóa các bản ghi không cần thiết để đảm bảo cơ sở dữ liệu được tối ưu.
 
 ---
 
@@ -91,9 +86,8 @@ Hệ thống xây dựng theo kiến trúc **microservices** giúp tách biệt 
 ### Các thành phần chính
 
 - **Frontend User**  
-  Giao diện dành cho người dùng cuối, cho phép tải lên ảnh, video hoặc truyền trực tiếp luồng camera. Hiển thị kết quả nhận diện biển số xe theo thời gian thực, hỗ trợ sao chép nhanh biển số để tra cứu phạt nguội, đồng thời lưu lại lịch sử tra cứu tiện lợi.  
-  Ngoài ra, giao diện còn có nút chuyển sang chế độ quản trị (Admin), yêu cầu người dùng nhập tài khoản và mật khẩu được cấp trước để đăng nhập và truy cập các chức năng quản trị hệ thống.
-
+  Cho phép tải ảnh, video hoặc truyền trực tiếp luồng camera để nhận diện biển số. Hiển thị kết quả nhận diện biển số xe theo thời gian thực, hỗ trợ sao chép nhanh biển số để tra cứu phạt nguội, đồng thời lưu lại lịch sử tra cứu tiện lợi.  
+  Giao diện bao gồm nút chuyển sang chế độ quản trị (Admin), yêu cầu người dùng đăng nhập để truy cập các chức năng quản trị.
 
 - **Backend AI**  
   Xử lý nhận diện biển số xe bằng mô hình YOLOv5 và OCR, đảm bảo tốc độ và độ chính xác cao trong thời gian thực. Trả kết quả về frontend và lưu vào backend DB.
@@ -102,7 +96,7 @@ Hệ thống xây dựng theo kiến trúc **microservices** giúp tách biệt 
   Lưu trữ dữ liệu biển số, ảnh, lịch sử tra cứu và quản lý người dùng. Cung cấp API RESTful cho các thành phần truy cập dữ liệu.
 
 - **Frontend Admin**  
-  Giao diện quản trị hỗ trợ giám sát hoạt động hệ thống, tìm kiếm, thống kê và xuất báo cáo. Tìm kiếm lịch sử tra nhận diện biển số và xóa lịch sử tra cứu trên hệ thống
+  Giao diện quản trị hỗ trợ giám sát hoạt động hệ thống, tìm kiếm, thống kê và xuất báo cáo. Tìm kiếm lịch sử nhận diện biển số xe và cho phép xóa các bản ghi theo thời gian cụ thể.
   Hệ thống bao gồm trang đăng nhập bảo mật, yêu cầu nhập tài khoản và mật khẩu hợp lệ trước khi truy cập các tính năng quản trị.
 
 ### Giao tiếp hệ thống
