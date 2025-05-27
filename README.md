@@ -115,14 +115,35 @@ Hệ thống xây dựng theo kiến trúc **microservices** giúp tách biệt 
 ### Giao tiếp hệ thống
 
 - Sử dụng **API RESTful** làm kênh giao tiếp chính giữa frontend và backend.  
-- Dùng **WebSocket** để cập nhật dữ liệu nhận diện theo thời gian thực tới frontend.  
 - Mỗi dịch vụ chạy trong **Docker container** đảm bảo môi trường vận hành đồng nhất, dễ dàng triển khai và mở rộng.  
 - **Giao diện người dùng (User)** có thêm nút chuyển sang giao diện **Admin**, khi đó yêu cầu đăng nhập với tài khoản và mật khẩu được cấp sẵn mới có thể truy cập được khu vực quản trị. 
 
 ---
 
 ## Liên kết Docker Hub
-
-
+Image được build sẵn và lưu trữ tại Docker Hub:
+[https://hub.docker.com/r/ntkreyn1103/btl_nhom_5conga/tags](https://hub.docker.com/r/yourusername/license-plate-backend)
 
 ## Hướng dẫn chạy Docker Compose
+Thực hiện các bước sau để khởi động toàn bộ hệ thống:
+
+1. **Tải image từ Docker Hub:**
+
+```bash
+docker pull ntkreyn1103/btl_nhom_5conga
+```
+
+2. **Lưu tệp `docker-compose.yml` được cung cấp** vào thư mục dự án.
+
+3. **Chạy hệ thống bằng Docker Compose:**
+
+```bash
+docker-compose up -d
+```
+
+4. **Truy cập ứng dụng tại:**
+
+* Frontend user: [http://localhost:3000](http://localhost:3000)
+* Frontend admin: [http://localhost:5174](http://localhost:5174)
+
+---
