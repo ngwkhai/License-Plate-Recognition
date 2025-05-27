@@ -130,7 +130,7 @@ Bao gồm các service:
 - `ntkreyn1103/btl_nhom_5conga:backend-ai`
 - `ntkreyn1103/btl_nhom_5conga:frontend-user`
 - `ntkreyn1103/btl_nhom_5conga:frontend-admin`
-
+- `ntkreyn1103/btl_nhom_5conga:postgres`
 ---
 
 ## Hướng dẫn chạy Docker Compose
@@ -143,6 +143,7 @@ docker pull ntkreyn1103/btl_nhom_5conga:backend-db
 docker pull ntkreyn1103/btl_nhom_5conga:backend-ai
 docker pull ntkreyn1103/btl_nhom_5conga:frontend-user
 docker pull ntkreyn1103/btl_nhom_5conga:frontend-admin
+docker pull ntkreyn1103/btl_nhom_5conga:postgres
 ````
 
 2. **Lưu tệp `docker-compose.yml` được cung cấp** vào thư mục gốc của dự án.
