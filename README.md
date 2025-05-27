@@ -21,7 +21,7 @@
 - 23020384 – Nguyễn Đình Khải  
 - 23020388 – Nguyễn Thế Khôi  
 - 23020414 – Võ Duy Quang  
-- 223020376 – Nguyễn Đức Huy  
+- 23020376 – Nguyễn Đức Huy  
 - 230200344 – Ngô Quang Dũng  
 
 ---
@@ -39,7 +39,7 @@ Hệ thống được thiết kế để:
 - Lưu trữ thông tin biển số xe, hình ảnh gốc và ảnh vùng biển số đã xử lý cùng tọa độ biển số trên ảnh.  
 - Hiển thị camera real-time kèm kết quả nhận diện tức thời.  
 - Cung cấp hai giao diện web dành cho người dân và quản trị viên.  
-- Tích hợp API tra cứu phạt nguội từ trang chính thức csgt.vn.  
+- Tích hợp API tra cứu phạt nguội từ trang chính thức **[API tra cứu phạt nguội tại csgt.vn](https://www.csgt.vn)**
 - Thiết kế theo kiến trúc microservices, dễ dàng mở rộng và bảo trì.  
 - Triển khai bằng Docker, thuận tiện trong nhiều môi trường thực tế.  
 
