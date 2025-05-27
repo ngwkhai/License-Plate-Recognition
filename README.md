@@ -22,7 +22,7 @@
 - 23020388 – Nguyễn Thế Khôi  
 - 23020414 – Võ Duy Quang  
 - 23020376 – Nguyễn Đức Huy  
-- 230200344 – Ngô Quang Dũng  
+- 23020344 – Ngô Quang Dũng  
 
 ---
 
@@ -36,7 +36,7 @@ Hệ thống được thiết kế để:
 
 - Nhận diện biển số xe từ ảnh tĩnh, video có sẵn hoặc luồng camera trực tiếp (real-time).
 - Xử lý dữ liệu theo thời gian thực, đảm bảo tốc độ và độ chính xác cao.  
-- Lưu trữ thông tin biển số xe, hình ảnh gốc và ảnh vùng biển số đã xử lý cùng tọa độ biển số trên ảnh.  
+- Lưu trữ thông tin biển số xe cùng với thời gian tra cứu .  
 - Hiển thị luồng camera thời gian thực kèm kết quả nhận diện ngay lập tức. 
 - Cung cấp hai giao diện web dành cho người dân và quản trị viên.  
 - Tích hợp API tra cứu phạt nguội từ trang chính thức **[CSGT.vn](https://www.csgt.vn)**
@@ -48,7 +48,7 @@ Hệ thống được thiết kế để:
 - Phát triển mô hình AI (YOLOv5 + OCR) nhận diện biển số xe từ nhiều nguồn dữ liệu.  
 - Xử lý, lưu trữ và quản lý dữ liệu nhận diện biển số cùng lịch sử tra cứu.  
 - Xây dựng API RESTful phục vụ giao tiếp giữa các thành phần frontend và backend.  
-- Phát triển giao diện quản trị giúp giám sát, thống kê và xuất báo cáo.  
+- Phát triển giao diện quản trị giúp giám sát, thống kê .  
 - Đảm bảo hệ thống hoạt động ổn định, hiệu quả với khả năng mở rộng cao.  
 
 ### Trường hợp sử dụng tiêu biểu
@@ -93,10 +93,23 @@ Hệ thống xây dựng theo kiến trúc **microservices** giúp tách biệt 
   Xử lý nhận diện biển số xe bằng mô hình YOLOv5 và OCR, đảm bảo tốc độ và độ chính xác cao trong thời gian thực. Trả kết quả về frontend và lưu vào backend DB.
 
 - **Backend DB**  
-  Lưu trữ dữ liệu biển số, ảnh, lịch sử tra cứu và quản lý người dùng. Cung cấp API RESTful cho các thành phần truy cập dữ liệu.
+  - Lưu trữ dữ liệu biển số xe cùng với thời gian tra cứu  
+  - Quản lý lịch sử tra cứu, thống kê và thông tin người dùng  
+
+  Bảng `users` – Lưu thông tin đăng nhập và phân quyền người dùng:  
+  - `id`: khóa chính  
+  - `username`: tên tài khoản  
+  - `password_hash`: mật khẩu đã được mã hóa (băm)  
+  - `role`: phân quyền người dùng (`user`, `admin`)  
+  - `created_at`: thời điểm tạo tài khoản  
+
+  Bảng `lookup_logs` – Lưu lịch sử tra cứu biển số:  
+  - `id`: khóa chính  
+  - `plate_number`: biển số được tra cứu  
+  - `lookup_time`: thời điểm thực hiện tra cứu  
 
 - **Frontend Admin**  
-  Giao diện quản trị hỗ trợ giám sát hoạt động hệ thống, tìm kiếm, thống kê và xuất báo cáo. Tìm kiếm lịch sử nhận diện biển số xe và cho phép xóa các bản ghi theo thời gian cụ thể.
+  Giao diện quản trị hỗ trợ giám sát hoạt động hệ thống, tìm kiếm, thống kê . Tìm kiếm lịch sử nhận diện biển số xe và cho phép xóa các bản ghi theo thời gian cụ thể.
   Hệ thống bao gồm trang đăng nhập bảo mật, yêu cầu nhập tài khoản và mật khẩu hợp lệ trước khi truy cập các tính năng quản trị.
 
 ### Giao tiếp hệ thống
