@@ -165,13 +165,13 @@ async def upload_image(files: List[UploadFile] = File(...)):
             "fileType": file.content_type
         })
 
-        # for i in list_read_plates:
-        #     data = {
-        #         "plate_number": i,
-        #         "lookup_time": datetime.utcnow().isoformat()
-        #     }
-        #     response = requests.post("http://localhost:8001/log_lookup", json=data)
-        #     print(response.status_code, response.json())
+        for i in list_read_plates:
+            data = {
+                "plate_number": i,
+                "lookup_time": datetime.utcnow().isoformat()
+            }
+            response = requests.post("http://backend_db:8001/log_lookup", json=data)
+            print(response.status_code, response.json())
 
 
     return JSONResponse(content=results)
