@@ -113,7 +113,7 @@ export function FileUploader() {
           const blob = new Blob([byteArray], { type: result.fileType })
           const imageUrl = URL.createObjectURL(blob)
 
-          return {
+          const resultItem = {
             id: `result-${Date.now()}-${index}`,
             filename: result.filename,
             licensePlates: result.licensePlates,
@@ -121,8 +121,21 @@ export function FileUploader() {
             imageUrl,
             fileType: result.fileType,
           }
+          const historyItem = {
+            id: resultItem.id,
+            licensePlates: resultItem.licensePlates,
+            timestamp: resultItem.timestamp,
+            source: "upload",
+            filename: resultItem.filename,
+            imageUrl: resultItem.imageUrl,
+            fileType: resultItem.fileType,
+          }
+          setHistory((prevHistory) => [historyItem, ...prevHistory])
+
+          return resultItem
+          
         } else if (result.videoPath) {
-          return {
+          const resultItem = {
             id: `result-${Date.now()}-${index}`,
             filename: result.filename,
             licensePlates: result.licensePlates || [],
@@ -130,6 +143,18 @@ export function FileUploader() {
             imageUrl: `http://localhost:8000/videos/${result.videoPath}`,
             fileType: result.fileType,
           }
+          const historyItem = {
+            id: resultItem.id,
+            licensePlates: resultItem.licensePlates,
+            timestamp: resultItem.timestamp,
+            source: "upload",
+            filename: resultItem.filename,
+            imageUrl: resultItem.imageUrl,
+            fileType: resultItem.fileType,
+          }
+          setHistory((prevHistory) => [historyItem, ...prevHistory])
+
+          return resultItem
         } else {
           return {
             id: `result-${Date.now()}-${index}`,
@@ -143,7 +168,6 @@ export function FileUploader() {
       })
 
       setResults(processedResults)
-      setHistory((prev) => [...processedResults, ...prev])
 
       toast({
         title: "Tải lên thành công",

@@ -184,3 +184,47 @@ def get_video(filename: str):
     if os.path.exists(path):
         return FileResponse(path, media_type="video/mp4")
     return JSONResponse(status_code=404, content={"error": "Video not found"})
+
+@app.post("/stream_frame")
+async def stream_frame(image: UploadFile = File(...)):
+    contents = await image.read()
+    nparr = np.frombuffer(contents, np.uint8)
+    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
+    license_plates = []
+    bounding_boxes = []
+
+    plates = detector(img, size=640)
+    list_plates = plates.pandas().xyxy[0].values.tolist()
+
+    for plate in list_plates:
+        x = int(plate[0])
+        y = int(plate[1])
+        w = int(plate[2] - plate[0])
+        h = int(plate[3] - plate[1])
+        crop_img = img[y:y+h, x:x+w]
+
+        detected_plate = "unknown"
+        for cc in range(2):
+            for ct in range(2):
+                lp = helper.read_plate(ocr_model, utils_rotate.deskew(crop_img, cc, ct))
+                if lp != "unknown":
+                    detected_plate = lp
+                    break
+            if detected_plate != "unknown":
+                break
+
+        if detected_plate != "unknown":
+            license_plates.append(detected_plate)
+            bounding_boxes.append({
+                "x": x,
+                "y": y,
+                "width": w,
+                "height": h
+            })
+
+    return {
+        "licensePlates": license_plates,
+        "boundingBoxes": bounding_boxes,
+        "timestamp": datetime.utcnow().isoformat()
+    }

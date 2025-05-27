@@ -48,7 +48,6 @@ export function CameraViewer() {
   }, [toast])
 
   useEffect(() => {
-    // Sync history to localStorage when history changes
     localStorage.setItem("license-plate-history", JSON.stringify(history))
   }, [history])
 
@@ -79,11 +78,15 @@ export function CameraViewer() {
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream
-        videoRef.current.play()
+        await videoRef.current.play()
+        await new Promise((resolve) => {
+          videoRef.current.onloadedmetadata = () => resolve()
+        })
       }
 
       setIsStreaming(true)
       setResult(null)
+      loopCapture()
     } catch (error) {
       console.error("Error starting stream:", error)
       toast({
@@ -107,15 +110,15 @@ export function CameraViewer() {
     setIsStreaming(false)
   }
 
-  const captureFrame = () => {
-    if (!videoRef.current || !canvasRef.current || !isStreaming) {
-      toast({
-        title: "Không thể chụp ảnh",
-        description: "Camera chưa hoạt động hoặc chưa có khung hình.",
-        variant: "destructive",
-      })
-      return
+  const loopCapture = async () => {
+    while (isStreaming) {
+      await captureFrame()
+      await new Promise((resolve) => setTimeout(resolve, 1000))
     }
+  }
+
+  const captureFrame = async () => {
+    if (!videoRef.current || !canvasRef.current || !isStreaming) return
 
     const video = videoRef.current
     const canvas = canvasRef.current
@@ -126,76 +129,58 @@ export function CameraViewer() {
     canvas.height = video.videoHeight
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
 
-    canvas.toBlob(async (blob) => {
-      if (!blob) return
+    return new Promise((resolve) => {
+      canvas.toBlob(async (blob) => {
+        if (!blob) return resolve()
 
-      setIsLoading(true)
+        setIsLoading(true)
+        try {
+          const formData = new FormData()
+          formData.append("files", blob, "frame.jpg")
 
-      try {
-        const formData = new FormData()
-        formData.append("image", blob)
+          const response = await fetch("http://localhost:8000/upload", {
+            method: "POST",
+            body: formData,
+          })
 
-        const response = await fetch("http://localhost:8000/upload", {
-          method: "POST",
-          body: formData,
-        })
+          const data = await response.json()
+          const firstResult = data[0]
+          if (!firstResult || !firstResult.licensePlates || !firstResult.imageBase64) return resolve()
 
-        const data = await response.json()
+          const imageData = `data:image/jpeg;base64,${firstResult.imageBase64}`
 
-        if (!data.licensePlates || !data.boundingBoxes) {
-          throw new Error("Dữ liệu trả về không hợp lệ.")
-        }
-
-        // Vẽ bounding boxes và label
-        data.boundingBoxes.forEach((box, index) => {
-          const { x, y, width, height } = box
-          ctx.strokeStyle = "#FF0000"
-          ctx.lineWidth = 3
-          ctx.strokeRect(x, y, width, height)
-
-          ctx.fillStyle = "#FF0000"
-          ctx.font = "16px Arial"
-          ctx.fillText(data.licensePlates[index] || "", x, y - 5)
-        })
-
-        const imageData = canvas.toDataURL("image/jpeg")
-
-        const newResult = {
-          id: `result-${Date.now()}`,
-          licensePlates: data.licensePlates,
-          boundingBoxes: data.boundingBoxes,
-          timestamp: new Date().toISOString(),
-          imageData,
-        }
-
-        setResult(newResult)
-
-        data.licensePlates.forEach((plate, plateIndex) => {
-          const newHistoryItem = {
-            id: `${newResult.id}-plate-${plateIndex}`,
-            licensePlate: plate,
-            timestamp: newResult.timestamp,
-            source: "camera",
-            imageUrl: imageData,
+          const newResult = {
+            id: `result-${Date.now()}`,
+            licensePlates: firstResult.licensePlates,
+            timestamp: firstResult.timestamp,
+            imageData,
           }
-          setHistory((prev) => [newHistoryItem, ...prev])
-        })
 
-        toast({
-          title: "Nhận dạng thành công",
-          description: `Phát hiện ${data.licensePlates.length} biển số.`,
-        })
-      } catch (err) {
-        console.error("Recognition error:", err)
-        toast({
-          title: "Lỗi nhận dạng",
-          description: "Không thể nhận dạng ảnh. Vui lòng thử lại.",
-          variant: "destructive",
-        })
-      } finally {
-        setIsLoading(false)
-      }
-    }, "image/jpeg")
+          setResult(newResult)
+
+          firstResult.licensePlates.forEach((plate, plateIndex) => {
+            const newHistoryItem = {
+              id: `${newResult.id}-plate-${plateIndex}`,
+              licensePlate: plate,
+              timestamp: newResult.timestamp,
+              source: "camera",
+              imageUrl: imageData,
+            }
+            setHistory((prev) => [newHistoryItem, ...prev])
+          })
+        } catch (err) {
+          console.error("Recognition error:", err)
+          toast({
+            title: "Lỗi nhận dạng",
+            description: "Không thể nhận dạng ảnh. Vui lòng thử lại.",
+            variant: "destructive",
+          })
+        } finally {
+          setIsLoading(false)
+          resolve()
+        }
+      }, "image/jpeg")
+    })
   }
 
   return (
@@ -219,22 +204,15 @@ export function CameraViewer() {
         <button onClick={stopStream} className="bg-red-600 text-white px-4 py-2 rounded">
           Dừng
         </button>
-        <button
-          onClick={captureFrame}
-          disabled={isLoading}
-          className="bg-blue-600 text-white px-4 py-2 rounded"
-        >
-          {isLoading ? "Đang xử lý..." : "Chụp ảnh"}
-        </button>
       </div>
 
-      <video ref={videoRef} className="w-full rounded border" autoPlay muted />
-      <canvas ref={canvasRef} className="hidden" />
+      <canvas ref={canvasRef} className="w-full rounded border" />
 
       {result?.licensePlates?.length > 0 && (
         <div className="mt-4">
           <h4 className="font-bold mb-2">Biển số nhận dạng:</h4>
-          <ul className="bg-gray-100 p-3 rounded space-y-1 text-sm">
+          <img src={result.imageData} alt="Biển số" className="rounded border w-full max-w-xl" />
+          <ul className="bg-gray-100 p-3 rounded space-y-1 text-sm mt-2">
             {result.licensePlates.map((plate, index) => (
               <li key={index} className="bg-white p-1 rounded border">
                 {plate}
