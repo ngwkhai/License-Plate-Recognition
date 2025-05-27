@@ -121,19 +121,31 @@ Hệ thống xây dựng theo kiến trúc **microservices** giúp tách biệt 
 ---
 
 ## Liên kết Docker Hub
-Image được build sẵn và lưu trữ tại Docker Hub:
-[https://hub.docker.com/r/ntkreyn1103/btl_nhom_5conga/tags](https://hub.docker.com/r/yourusername/license-plate-backend)
+
+Image được build sẵn và lưu trữ tại Docker Hub:  
+👉 [https://hub.docker.com/r/ntkreyn1103/btl_nhom_5conga/tags](https://hub.docker.com/r/ntkreyn1103/btl_nhom_5conga/tags)
+
+Bao gồm các service:
+- `ntkreyn1103/btl_nhom_5conga:backend-db`
+- `ntkreyn1103/btl_nhom_5conga:backend-ai`
+- `ntkreyn1103/btl_nhom_5conga:frontend-user`
+- `ntkreyn1103/btl_nhom_5conga:frontend-admin`
+
+---
 
 ## Hướng dẫn chạy Docker Compose
+
 Thực hiện các bước sau để khởi động toàn bộ hệ thống:
 
-1. **Tải image từ Docker Hub:**
-
+1. **Tải các image từ Docker Hub:**
 ```bash
-docker pull ntkreyn1103/btl_nhom_5conga
-```
+docker pull ntkreyn1103/btl_nhom_5conga:backend-db
+docker pull ntkreyn1103/btl_nhom_5conga:backend-ai
+docker pull ntkreyn1103/btl_nhom_5conga:frontend-user
+docker pull ntkreyn1103/btl_nhom_5conga:frontend-admin
+````
 
-2. **Lưu tệp `docker-compose.yml` được cung cấp** vào thư mục dự án.
+2. **Lưu tệp `docker-compose.yml` được cung cấp** vào thư mục gốc của dự án.
 
 3. **Chạy hệ thống bằng Docker Compose:**
 
@@ -143,7 +155,9 @@ docker-compose up -d
 
 4. **Truy cập ứng dụng tại:**
 
-* Frontend user: [http://localhost:3000](http://localhost:3000)
-* Frontend admin: [http://localhost:5174](http://localhost:5174)
+*  Frontend user: [http://localhost:3000](http://localhost:3000)
+*  Frontend admin: [http://localhost:5174](http://localhost:5174)
+*  Backend AI API: [http://localhost:8000](http://localhost:8000)
+*  Backend DB API: [http://localhost:8001](http://localhost:8001)
 
 ---
