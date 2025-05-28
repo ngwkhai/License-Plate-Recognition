@@ -126,10 +126,10 @@ Image được build sẵn và lưu trữ tại Docker Hub:
 👉 [https://hub.docker.com/r/ntkreyn1103/btl_nhom_5conga/tags](https://hub.docker.com/r/ntkreyn1103/btl_nhom_5conga/tags)
 
 Bao gồm các service:
-- `ntkreyn1103/btl_nhom_5conga:backend-db`
-- `ntkreyn1103/btl_nhom_5conga:backend-ai`
-- `ntkreyn1103/btl_nhom_5conga:frontend-user`
-- `ntkreyn1103/btl_nhom_5conga:frontend-admin`
+- `ntkreyn1103/btl_nhom_5conga:backend_db`
+- `ntkreyn1103/btl_nhom_5conga:backend_ai`
+- `ntkreyn1103/btl_nhom_5conga:frontend_user`
+- `ntkreyn1103/btl_nhom_5conga:frontend_admin`
 - `ntkreyn1103/btl_nhom_5conga:postgres`
 ---
 
@@ -139,10 +139,10 @@ Thực hiện các bước sau để khởi động toàn bộ hệ thống:
 
 1. **Tải các image từ Docker Hub:**
 ```bash
-docker pull ntkreyn1103/btl_nhom_5conga:backend-db
-docker pull ntkreyn1103/btl_nhom_5conga:backend-ai
-docker pull ntkreyn1103/btl_nhom_5conga:frontend-user
-docker pull ntkreyn1103/btl_nhom_5conga:frontend-admin
+docker pull ntkreyn1103/btl_nhom_5conga:backend_db
+docker pull ntkreyn1103/btl_nhom_5conga:backend_ai
+docker pull ntkreyn1103/btl_nhom_5conga:frontend_user
+docker pull ntkreyn1103/btl_nhom_5conga:frontend_admin
 docker pull ntkreyn1103/btl_nhom_5conga:postgres
 ````
 
