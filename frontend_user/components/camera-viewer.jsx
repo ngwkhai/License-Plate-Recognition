@@ -13,6 +13,8 @@ export function CameraViewer() {
   const canvasRef = useRef(null)
   const resultCanvasRef = useRef(null)
   const streamRef = useRef(null)
+  const retryTimeoutRef = useRef(null)
+  const captureIntervalRef = useRef(null)
   const { toast } = useToast()
   const [history, setHistory] = useState(
     () => JSON.parse(localStorage.getItem("license-plate-history") || "[]")
@@ -41,10 +43,7 @@ export function CameraViewer() {
     getDevices()
 
     return () => {
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop())
-        streamRef.current = null
-      }
+      stopStream()
     }
   }, [toast])
 
@@ -87,7 +86,9 @@ export function CameraViewer() {
 
       setIsStreaming(true)
       setResult(null)
-      loopCapture()
+
+      // Bắt đầu gửi frame tự động mỗi 1.5s
+      captureIntervalRef.current = setInterval(captureFrame, 1500)
     } catch (error) {
       console.error("Error starting stream:", error)
       toast({
@@ -95,6 +96,9 @@ export function CameraViewer() {
         description: "Vui lòng thử lại.",
         variant: "destructive",
       })
+      retryTimeoutRef.current = setTimeout(() => {
+        startStream()
+      }, 5000)
     }
   }
 
@@ -103,19 +107,16 @@ export function CameraViewer() {
       streamRef.current.getTracks().forEach((track) => track.stop())
       streamRef.current = null
     }
-
     if (videoRef.current) {
       videoRef.current.srcObject = null
     }
-
-    setIsStreaming(false)
-  }
-
-  const loopCapture = async () => {
-    while (isStreaming) {
-      await captureFrame()
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+    if (retryTimeoutRef.current) {
+      clearTimeout(retryTimeoutRef.current)
     }
+    if (captureIntervalRef.current) {
+      clearInterval(captureIntervalRef.current)
+    }
+    setIsStreaming(false)
   }
 
   const captureFrame = async () => {
@@ -131,69 +132,66 @@ export function CameraViewer() {
     canvas.height = video.videoHeight
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
 
-    return new Promise((resolve) => {
-      canvas.toBlob(async (blob) => {
-        if (!blob) return resolve()
+    canvas.toBlob(async (blob) => {
+      if (!blob) return
 
-        setIsLoading(true)
-        try {
-          const formData = new FormData()
-          formData.append("files", blob, "frame.jpg")
+      setIsLoading(true)
+      try {
+        const formData = new FormData()
+        formData.append("files", blob, "frame.jpg")
 
-          const response = await fetch("http://localhost:8000/upload", {
-            method: "POST",
-            body: formData,
-          })
+        const response = await fetch("http://localhost:8000/upload", {
+          method: "POST",
+          body: formData,
+        })
 
-          const data = await response.json()
-          const firstResult = data[0]
-          if (!firstResult || !firstResult.licensePlates || !firstResult.imageBase64) return resolve()
+        const data = await response.json()
+        const firstResult = data[0]
+        if (!firstResult || !firstResult.licensePlates || !firstResult.imageBase64) return
 
-          const image = new Image()
-          image.onload = () => {
-            if (resultCanvas) {
-              const ctx2 = resultCanvas.getContext("2d")
-              if (ctx2) {
-                resultCanvas.width = image.width
-                resultCanvas.height = image.height
-                ctx2.clearRect(0, 0, image.width, image.height)
-                ctx2.drawImage(image, 0, 0)
-              }
+        const image = new Image()
+        image.onload = () => {
+          if (resultCanvas) {
+            const ctx2 = resultCanvas.getContext("2d")
+            if (ctx2) {
+              resultCanvas.width = image.width
+              resultCanvas.height = image.height
+              ctx2.clearRect(0, 0, image.width, image.height)
+              ctx2.drawImage(image, 0, 0)
             }
           }
-          image.src = `data:image/jpeg;base64,${firstResult.imageBase64}`
-
-          const newResult = {
-            id: `result-${Date.now()}`,
-            licensePlates: firstResult.licensePlates,
-            timestamp: firstResult.timestamp,
-          }
-
-          setResult(newResult)
-
-          firstResult.licensePlates.forEach((plate, plateIndex) => {
-            const newHistoryItem = {
-              id: `${newResult.id}-plate-${plateIndex}`,
-              licensePlate: plate,
-              timestamp: newResult.timestamp,
-              source: "camera",
-              imageUrl: image.src,
-            }
-            setHistory((prev) => [newHistoryItem, ...prev])
-          })
-        } catch (err) {
-          console.error("Recognition error:", err)
-          toast({
-            title: "Lỗi nhận dạng",
-            description: "Không thể nhận dạng ảnh. Vui lòng thử lại.",
-            variant: "destructive",
-          })
-        } finally {
-          setIsLoading(false)
-          resolve()
         }
-      }, "image/jpeg")
-    })
+        image.src = `data:image/jpeg;base64,${firstResult.imageBase64}`
+
+        const newResult = {
+          id: `result-${Date.now()}`,
+          licensePlates: firstResult.licensePlates,
+          timestamp: firstResult.timestamp,
+        }
+
+        setResult(newResult)
+
+        firstResult.licensePlates.forEach((plate, plateIndex) => {
+          const newHistoryItem = {
+            id: `${newResult.id}-plate-${plateIndex}`,
+            licensePlate: plate,
+            timestamp: newResult.timestamp,
+            source: "camera",
+            imageUrl: image.src,
+          }
+          setHistory((prev) => [newHistoryItem, ...prev])
+        })
+      } catch (err) {
+        console.error("Recognition error:", err)
+        toast({
+          title: "Lỗi nhận dạng",
+          description: "Không thể nhận dạng ảnh. Vui lòng thử lại.",
+          variant: "destructive",
+        })
+      } finally {
+        setIsLoading(false)
+      }
+    }, "image/jpeg")
   }
 
   return (

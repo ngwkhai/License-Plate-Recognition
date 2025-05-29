@@ -17,6 +17,7 @@ import tempfile
 import os
 import time
 import uuid
+import subprocess
 
 MODEL_PATH_DETECTOR = "model/LP_detector.pt"
 MODEL_PATH_OCR = "model/LP_ocr.pt"
@@ -32,7 +33,7 @@ detector.conf = CONF_THRESHOLD
 yolo_LP_detect.conf = CONF_THRESHOLD
 
 VIDEO_EXTENSIONS = (".mp4", ".avi", ".mov", ".mkv")
-VIDEO_SAVE_DIR = "videos"
+VIDEO_SAVE_DIR = os.getenv("VIDEO_SAVE_DIR", "/backend_ai/videos")
 os.makedirs(VIDEO_SAVE_DIR, exist_ok=True)
 
 app = FastAPI()
@@ -52,9 +53,12 @@ def process_video(file_path: str) -> dict:
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-    filename = f"{uuid.uuid4().hex}.mp4"
-    output_path = os.path.join(VIDEO_SAVE_DIR, filename)
-    out = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*"mp4v"), fps, (width, height))
+    # Tạo tên file
+    base_id = uuid.uuid4().hex
+    temp_output = os.path.join(VIDEO_SAVE_DIR, f"temp_{base_id}.avi")  # Ghi video tạm
+    final_output = os.path.join(VIDEO_SAVE_DIR, f"{base_id}.mp4")      # File MP4 sau khi chuyển mã
+
+    out = cv2.VideoWriter(temp_output, cv2.VideoWriter_fourcc(*"XVID"), fps, (width, height))
 
     frame_skip = int(fps // 2) if fps > 2 else 1
     frame_index = 0
@@ -89,8 +93,24 @@ def process_video(file_path: str) -> dict:
     cap.release()
     out.release()
 
+    # Convert video sang định dạng chuẩn trình duyệt bằng ffmpeg
+    command = [
+        "ffmpeg", "-y",
+        "-i", temp_output,
+        "-vcodec", "libx264",
+        "-pix_fmt", "yuv420p",
+        "-movflags", "+faststart",
+        "-an",
+        final_output
+    ]
+    subprocess.run(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    # Xóa video tạm
+    if os.path.exists(temp_output):
+        os.remove(temp_output)
+
     return {
-        "video_path": filename,
+        "video_path": os.path.basename(final_output),
         "license_plates": list(set(all_plates))
     }
 
@@ -191,47 +211,3 @@ def get_video(filename: str):
     if os.path.exists(path):
         return FileResponse(path, media_type="video/mp4")
     return JSONResponse(status_code=404, content={"error": "Video not found"})
-
-@app.post("/stream_frame")
-async def stream_frame(image: UploadFile = File(...)):
-    contents = await image.read()
-    nparr = np.frombuffer(contents, np.uint8)
-    img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-
-    license_plates = []
-    bounding_boxes = []
-
-    plates = detector(img, size=640)
-    list_plates = plates.pandas().xyxy[0].values.tolist()
-
-    for plate in list_plates:
-        x = int(plate[0])
-        y = int(plate[1])
-        w = int(plate[2] - plate[0])
-        h = int(plate[3] - plate[1])
-        crop_img = img[y:y+h, x:x+w]
-
-        detected_plate = "unknown"
-        for cc in range(2):
-            for ct in range(2):
-                lp = helper.read_plate(ocr_model, utils_rotate.deskew(crop_img, cc, ct))
-                if lp != "unknown":
-                    detected_plate = lp
-                    break
-            if detected_plate != "unknown":
-                break
-
-        if detected_plate != "unknown":
-            license_plates.append(detected_plate)
-            bounding_boxes.append({
-                "x": x,
-                "y": y,
-                "width": w,
-                "height": h
-            })
-
-    return {
-        "licensePlates": license_plates,
-        "boundingBoxes": bounding_boxes,
-        "timestamp": datetime.utcnow().isoformat()
-    }
