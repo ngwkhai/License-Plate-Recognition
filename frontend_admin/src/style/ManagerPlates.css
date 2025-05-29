@@ -27,6 +27,7 @@
   width: 100%;
   border-collapse: collapse;
   min-width: 800px;
+  table-layout: fixed; /* Cố định layout bảng */
 }
 
 .logs-table th,
@@ -34,6 +35,10 @@
   padding: 12px 16px;
   border: 1px solid #ddd;
   text-align: left;
+  height: 48px; /* Chiều cao dòng cố định */
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .logs-table th {

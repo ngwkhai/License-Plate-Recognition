@@ -18,6 +18,7 @@ import os
 import time
 import uuid
 import subprocess
+import pytz
 
 MODEL_PATH_DETECTOR = "model/LP_detector.pt"
 MODEL_PATH_OCR = "model/LP_ocr.pt"
@@ -46,6 +47,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+tz = pytz.timezone("Asia/Ho_Chi_Minh")
+datetime.now(tz).isoformat()
 
 def process_video(file_path: str) -> dict:
     cap = cv2.VideoCapture(file_path)
@@ -134,15 +138,16 @@ async def upload_image(files: List[UploadFile] = File(...)):
             for i in plates_found:
                 data = {
                     "plate_number": i,
-                    "lookup_time": datetime.utcnow().isoformat()
+                    "lookup_time": datetime.now(tz).isoformat()
                 }
                 response = requests.post("http://backend_db:8001/log_lookup", json=data)
+                print(datetime.now(tz).isoformat(), i)
                 print(response.status_code, response.json())
 
             results.append({
                 "filename": file.filename,
                 "licensePlates": plates_found,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(tz).isoformat(),
                 "videoPath": video_filename,
                 "fileType": file.content_type
             })
@@ -189,7 +194,7 @@ async def upload_image(files: List[UploadFile] = File(...)):
         results.append({
             "filename": file.filename,
             "licensePlates": list(list_read_plates),
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(tz).isoformat(),
             "imageBase64": img_base64,
             "fileType": file.content_type
         })
@@ -197,9 +202,10 @@ async def upload_image(files: List[UploadFile] = File(...)):
         for i in list_read_plates:
             data = {
                 "plate_number": i,
-                "lookup_time": datetime.utcnow().isoformat()
+                "lookup_time": datetime.now(tz).isoformat()
             }
             response = requests.post("http://backend_db:8001/log_lookup", json=data)
+            print(datetime.now(tz).isoformat(), i)
             print(response.status_code, response.json())
 
     return JSONResponse(content=results)
